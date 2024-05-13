@@ -1,0 +1,8 @@
+Gamma: 1.4
+N: 400
+T end: 0.2
+CFL: 0.9
+BC: Neumann
+freq out: 0.02
+input name: Sod shock
+output name: Sod shock
