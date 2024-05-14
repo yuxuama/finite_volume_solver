@@ -1,3 +1,5 @@
 in/*
 out/*
 __pycache__/*
+!in
+!out

@@ -1,7 +1,7 @@
 from utils import init_param
 from solve import solve
 from plot import plot_density
-from in_file_maker import sod_shock_tube
+from in_file_maker import sod_shock_tube, two_rarefaction
 
 p_gamma = 0
 p_N = 1
@@ -16,6 +16,6 @@ p_out = 8
 
 if __name__ == '__main__':
     params = init_param('test.ini.txt')
-    sod_shock_tube(params) # Create input file
+    sod_shock_tube(params)
     solve(params) # Solve and create output file
     plot_density(params[p_out])

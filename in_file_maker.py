@@ -41,8 +41,20 @@ def two_rarefaction(params):
     """Créer le fichier de condition initiale pour les paramètres donnés
     pour le problème de la 2-raréfaction
     """
-    # TODO
-    pass
+    
+    N = params[p_N]
+
+    Q = np.ones((N+2, 3)) * np.array([1., 0.4, -2.])
+    Q[(N+2)//2:N+2, :] *= np.array([1., 1., -1.])
+
+    if params[p_BC] == 'periodic':
+        Q[0] = Q[N]
+        Q[N + 1] = Q[1]
+
+    with h5py.File(params[p_in], 'w') as f:
+        input_dset = f.create_dataset('data', (N+2, 3), dtype=float)
+        input_dset[:] = solve.primitive_into_conservative(Q, params)
+        create_all_attribute(input_dset, params)
 
 if __name__ == '__main__':
     params = init_param('test.ini.txt')
