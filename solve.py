@@ -1,10 +1,9 @@
 import numpy as np
-from numba import njit, jit
+from numba import njit, jit, prange
 import h5py
 from utils import *
 
 # Méthode des volumes finis
-# On se place dans les conditions aux limites de Neumann et dans un problème 1D
 
 @njit
 def compute_flux(U, i, params):
@@ -27,18 +26,20 @@ def compute_flux(U, i, params):
 
     # Grandeur upwind
     if u_star >= 0:
-        U_up = U[i-1,:].copy()
+        U_up = U[i-1,:]
     else:
-        U_up = U[i, :].copy()
+        U_up = U[i, :]
     
     # Calcul du flux
-    F = U_up * u_star + np.array([0., p_star, p_star * u_star])
-
+    F = U_up * u_star
+    F[1] += p_star
+    F[2] += p_star * u_star
+    
     return F
 
-@njit(parallel=True)
+@jit(parallel=True)
 def inside_loop(U, U_old, dt, dx, N, params):
-    for i in range(1, N+1):
+    for i in prange(1, N+1):
         U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
 
 def solve(params):

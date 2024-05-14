@@ -33,7 +33,7 @@ param_struct = [  ("Gamma", float),
 
 def init_param(filename):
     """Définit tous les paramètres de la simulation étant donné un fichier txt du bon format"""
-    params = [0 for i in range(9)]
+    params = [0 for _ in range(len(param_struct))]
     with open(filename, 'r') as f:
         i = 0
         for line in f.readlines():
@@ -103,6 +103,8 @@ def conservative_into_primitive(U, params):
     Q[:, j_speed] = get_pressure(U, mask, params)
     
     return Q
+
+# From files
 
 
 # Test
