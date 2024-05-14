@@ -49,14 +49,21 @@ def init_param(filename):
             i+=1
         
     assert params[p_BC] in ['neumann', 'periodic']
-    params[p_in] = "./in/" + params[p_in]
-    params[p_out] = "./out/" + params[p_out]
+    params[p_in] = "./in/" + params[p_in] + '.h5'
+    params[p_out] = "./out/" + params[p_out] + '.h5'
     return tuple(params) # Pour que numba fonctionne (objet non modifiable)
 
 def create_all_attribute(hdf_dset, params):
     """Met en attribut d'un hdf5 tous les paramètres de la simumation"""
     for i in range(7):
         hdf_dset.attrs.create(param_struct[i][0], params[i])
+
+def extract_parameter(dset):
+    """Récupère les paramètres en utilisant les attributs d'un dataset"""
+    params = [0 for i in range(len(param_struct))]
+    for i in range(len(param_struct)):
+        params[i] = dset.attrs.get(param_struct[i][0])
+    return tuple(params)
 
 # Conservatives and primitives utils
 

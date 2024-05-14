@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+from numba import njit, jit
 import h5py
 from utils import *
 
@@ -36,6 +36,11 @@ def compute_flux(U, i, params):
 
     return F
 
+@njit(parallel=True)
+def inside_loop(U, U_old, dt, dx, N, params):
+    for i in range(1, N+1):
+        U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
+
 def solve(params):
     """Résout le problème du tube de Sod grâce à la méthode des volumes finis sur un temps `T_end`
     en utilisant les conditions initiales données par U_i
@@ -65,8 +70,7 @@ def solve(params):
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
-        for i in range(1, N+1):
-            U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
+        inside_loop(U, U_old, dt, dx, N, params)
         
         if params[p_BC] == 'neumann':
             U[0] = U[1] 
@@ -78,10 +82,9 @@ def solve(params):
         U_old = U.copy()
         t = t+dt
 
-    with h5py.File(params[p_out], "w") as f:
-        dset = f.create_dataset('data', (N+2, 3), dtype=float)
-        dset[:] = U
-        create_all_attribute(dset, params)
+    f =  h5py.File(params[p_out], "w")
+    f["data"] = U
+    create_all_attribute(f['data'], params)
         
     
     return
