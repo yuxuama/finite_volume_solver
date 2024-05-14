@@ -103,7 +103,7 @@ def solve(params):
     
     f = h5py.File(params[p_in], 'r')
 
-    U_old = f['input'][:]
+    U_old = f['main'][:]
     U = np.zeros_like(U_old)
 
     # Discretisation de l'espace
@@ -131,7 +131,7 @@ def solve(params):
         t = t+dt
 
     with h5py.File(params[p_out], "w") as f:
-        dset = f.create_dataset('output', (params[p_N]+2, 3), dtype=float)
+        dset = f.create_dataset('main', (params[p_N]+2, 3), dtype=float)
         dset[:] = U
     
     return

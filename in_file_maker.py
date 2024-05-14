@@ -22,7 +22,7 @@ def sod_shock_tube(params):
     
 
     with h5py.File(params[p_in], 'w') as f:
-        input_dset = f.create_dataset('input', (params[p_N]+2, 3), dtype=float)
+        input_dset = f.create_dataset('main', (params[p_N]+2, 3), dtype=float)
         input_dset[:] = solve.primitive_into_conservative(Q, params)
 
 if __name__ == '__main__':

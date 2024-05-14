@@ -10,7 +10,7 @@ p_in = 6
 p_out = 7
 
 def init_param(filename):
-    """Définit tous les paramètres de la simulation étant donné un fichier tx"""
+    """Définit tous les paramètres de la simulation étant donné un fichier txt du bon format"""
     params = [0 for i in range(8)]
     struct = [  ("Gamma:", float),
                 ("N:", int),
@@ -35,6 +35,7 @@ def init_param(filename):
         params[p_in] = "./in/" + params[p_in]
         params[p_out] = "./out/" + params[p_out]
     return tuple(params)
+
 
 # Test
 
