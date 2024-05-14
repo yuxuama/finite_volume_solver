@@ -15,15 +15,28 @@ p_out = 7
 
 def sod_shock_tube(params):
     """ Créer le fichier de condition initiale pour les paramètres donnés
+    pour le problème du tube de Sod
     """
     # En utilisant les primitives (masse, pression, vitesse )
     Q = np.ones((params[p_N]+2, 3), dtype=float) * np.array([1., 1., 0.])
     Q[(params[p_N]+2)//2:params[p_N]+2, :] *= np.array([0.125, 0.1, 0.])
     
+    if params[p_BC] == 'periodic':
+        Q[0] = Q[params[p_N]]
+        Q[params[p_N] + 1] = Q[1]
 
     with h5py.File(params[p_in], 'w') as f:
         input_dset = f.create_dataset('main', (params[p_N]+2, 3), dtype=float)
         input_dset[:] = solve.primitive_into_conservative(Q, params)
+    
+
+
+def two_rarefaction(params):
+    """Créer le fichier de condition initiale pour les paramètres donnés
+    pour le problème de la 2-raréfaction
+    """
+    # TODO
+    pass
 
 if __name__ == '__main__':
     params = utils.init_param('test.ini.txt')

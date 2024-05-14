@@ -124,8 +124,13 @@ def solve(params):
 
         for i in range(1, params[p_N]+1):
             U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
-        U[0] = U[1]
-        U[params[p_N]+1] = U[params[p_N]]
+        
+        if params[p_BC] == 'neumann':
+            U[0] = U[1] 
+            U[params[p_N]+1] = U[params[p_N]]
+        elif params[p_BC] == 'periodic':
+            U[0] = U[params[p_N]]
+            U[params[p_N] + 1] = U[1]
 
         U_old = U.copy()
         t = t+dt

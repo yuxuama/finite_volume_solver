@@ -14,6 +14,6 @@ p_out = 7
 
 if __name__ == '__main__':
     params = init_param('test.ini.txt')
-    sod_shock_tube(params)
-    solve(params)
+    sod_shock_tube(params) # Create input file
+    solve(params) # Solve and create output file
     plot_density(params[p_out])

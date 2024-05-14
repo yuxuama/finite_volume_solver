@@ -32,11 +32,15 @@ def init_param(filename):
                 params[i] = int(line[len(struct[i][0])::])
             i+=1
         
-        params[p_in] = "./in/" + params[p_in]
-        params[p_out] = "./out/" + params[p_out]
+    assert params[p_BC] in ['neumann', 'periodic']
+    params[p_in] = "./in/" + params[p_in]
+    params[p_out] = "./out/" + params[p_out]
     return tuple(params)
 
-
+def create_all_attribute(hdf_file):
+    """Met en attribut d'un hdf5 tous les paramètres de la simumation"""
+    # TODO
+    pass
 # Test
 
 if __name__ == '__main__':
