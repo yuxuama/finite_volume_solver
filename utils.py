@@ -1,5 +1,6 @@
 import h5py
 from numba import njit
+import numpy as np
 
 i_mass = 0 # Pour les tableaux de grandeurs conservatives
 i_mom = 1
