@@ -1,124 +1,117 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from utils import get_pressure, get_speed, extract_parameter
 
-i_mass = 0 # Pour les tableaux de grandeurs conservatives
-i_mom = 1
-i_erg = 2
 
-def plot_density(filepath):
-    """Affiche la densité dans les datas du fichier HDF5 `filepath`"""
+def plot_density(filepath, ax=None, **kwargs):
+    """Affiche la densité dans les datas du fichier HDF5 `filepath`
+    `ax` permet de plot sur une autre figure
+    """
 
     # Load file
     f = h5py.File(filepath, 'r')
-    dset = f['data']
+    dset_x = f['x']
 
     # Extraction d'information
-    N = dset.attrs.get("N")
-    time = dset.attrs.get("T end")
-    name = dset.attrs.get("name")
+    time = dset_x.attrs.get("T end")
+    name = dset_x.attrs.get("name")
 
-    # Axe des abscisse
-    x = np.linspace(0, 1, N)
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
 
-    plt.title("{0} (Densité) @ t = {1} s".format(name, time))
-    plt.plot(x, dset[1:N+1, i_mass])
-    plt.ylabel("Densité")
-    plt.xlabel('$x$')
-    plt.show()
+    ax.set_title("{0} (Densité) @ t = {1} s".format(name, time))
+    ax.plot(dset_x[:], f["rho"][:], **kwargs)
+    ax.set_ylabel("Densité $m^{-3}$")
+    ax.set_xlabel('$x$')
 
-def plot_speed(filepath):
-    """Affiche la vitesse dans les datas du fichier HDF5 `filepath`"""
+    if plot:
+        plt.show()
+
+
+def plot_speed(filepath, ax=None, **kwargs):
+    """Affiche la densité dans les datas du fichier HDF5 `filepath`
+    `ax` permet de plot sur une autre figure
+    """
 
     # Load file
     f = h5py.File(filepath, 'r')
-    dset = f['data']
+    dset_x = f['x']
 
     # Extraction d'information
-    N = dset.attrs.get("N")
-    time = dset.attrs.get("T end")
-    name = dset.attrs.get("name")
+    time = dset_x.attrs.get("T end")
+    name = dset_x.attrs.get("name")
 
-    # Axe des abscisse
-    x = np.linspace(0, 1, N)
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
 
-    # Axes des ordonnées
+    ax.plot(dset_x[:], f["speed"][:], **kwargs)
+    ax.set_title("{0} (Vitesse) @ t = {1} s".format(name, time))
+    ax.set_ylabel("Vitesse ($m.s^{-1}$)")
+    ax.set_xlabel('$x$')
+    
+    if plot:
+        plt.show()
 
-    mask = np.arange(1, N+1)
-    data = get_speed(dset[:], mask)
 
-    plt.title("{0} (Vitesse) @ t = {1} s".format(name, time))
-    plt.plot(x, dset[1:N+1, i_mass])
-    plt.ylabel("Densité")
-    plt.xlabel('$x$')
-    plt.show()
-
-def plot_pressure(filepath):
-    """Affiche la pression dans les datas du fichier HDF5 `filepath`"""
+def plot_pressure(filepath, ax=None, **kwargs):
+    """Affiche la densité dans les datas du fichier HDF5 `filepath`
+    `ax` permet de plot sur une autre figure
+    """
 
     # Load file
     f = h5py.File(filepath, 'r')
-    dset = f['data']
+    dset_x = f['x']
 
     # Extraction d'information
-    N = dset.attrs.get("N")
-    time = dset.attrs.get("T end")
-    name = dset.attrs.get("name")
+    time = dset_x.attrs.get("T end")
+    name = dset_x.attrs.get("name")
 
-    params = extract_parameter(dset)
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
+    
+    ax.plot(dset_x[:], f["pressure"][:], **kwargs)
+    ax.set_title("{0} (Pression) @ t = {1} s".format(name, time))
+    ax.set_ylabel("Pression $Pa$")
+    ax.set_xlabel('$x$')
 
-    # Axe des abscisse
-    x = np.linspace(0, 1, N)
-
-    # Axe des ordonnées
-
-    mask = np.arange(1, N+1)
-    data = get_pressure(dset[:], mask, params)
-
-    plt.title("{0} (Pression) @ t = {1} s".format(name, time))
-    plt.plot(x, data)
-    plt.ylabel("Densité")
-    plt.xlabel('$x$')
-    plt.show()
+    if plot:
+        plt.show()
 
 def plot_all_primitive(filepath):
     """Affiche toutes les grandeurs dans un même graphique"""
 
     # Load file
     f = h5py.File(filepath, 'r')
-    dset = f['data']
+    dset_x = f['x']
 
-    # Extraction d'information
-
-    params = extract_parameter(dset)
-
-    N = dset.attrs.get("N")
-    time = dset.attrs.get("T end")
-    name = dset.attrs.get("name")
-
-    # Axe des abscisse
-    x = np.linspace(0, 1, N)
-
-    # Axe des ordonnées
-
-    mask = np.arange(1, N+1)
-    speed = get_speed(dset[:], mask)
-    pressure = get_pressure(dset[:], mask, params)
+    N = dset_x.attrs.get("N")
+    time = dset_x.attrs.get("T end")
+    name = dset_x.attrs.get("name")
 
     fig, ax = plt.subplots(1, 3, figsize=(13, 4))
     fig.suptitle("{0} @ t = {1} s".format(name, time))
 
-    ax[0].plot(x, dset[1:N+1, 0])
-    ax[0].set(xlabel="$x$", ylabel="Densité", title="Densité")
-
-    ax[1].plot(x, speed)
-    ax[1].set(xlabel="$x$", ylabel="Vitesse", title="Vitesse")
-    
-    ax[2].plot(x, pressure)
-    ax[2].set(xlabel="$x$", ylabel="Pression", title="Pression")
+    plot_density(filepath, ax=ax[0])
+    ax[0].set( xlabel="$x$", ylabel="Densité $(m^{-3})$", title="Densité")
+    plot_speed(filepath, ax=ax[1])
+    ax[1].set(xlabel="$x$", ylabel="Vitesse ($m.s^{-1}$)", title="Vitesse")
+    plot_pressure(filepath, ax=ax[2])
+    ax[2].set(xlabel="$x$", ylabel="Pression (Pa)", title="Pression")
 
     plt.show()
 
 if __name__ == "__main__":
-    plot_all_primitive('./out/sod shock')
+    file = "./out/sod shock.h5"
+    plot_all_primitive(file)

@@ -99,13 +99,14 @@ def conservative_into_primitive(U, params):
     """Renvoie le tableau des variables primitives en partant des variables conservatives"""
     Q = np.zeros_like(U)
     mask = np.arange(Q.shape[0])
-    Q[:, j_mass] = get_speed(U, mask)
-    Q[:, j_speed] = get_pressure(U, mask, params)
+    Q[:, j_mass] = U[:, 0]
+    Q[:, j_speed] = get_speed(U, mask)
+    Q[:, j_press] = get_pressure(U, mask, params)
     
     return Q
 
 # From files
-
+# TODO
 
 # Test
 

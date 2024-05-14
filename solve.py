@@ -49,9 +49,9 @@ def solve(params):
     
     N = params[p_N] # Pour la clareté
 
-    # tableaux pour sauvegarder l'état
+    # Tableaux pour sauvegarder l'état
     
-    f = h5py.File(params[p_in], 'r')
+    f = h5py.File(params[p_in], 'r') # Chargement de l'état initial
 
     U_old = f['data'][:]
     U = np.zeros_like(U_old)
@@ -83,10 +83,19 @@ def solve(params):
         U_old = U.copy()
         t = t+dt
 
+    # Storage in output file
+
     f =  h5py.File(params[p_out], "w")
-    f["data"] = U
-    create_all_attribute(f['data'], params)
-        
+    f["x"] = np.linspace(0, 1, N)
+    create_all_attribute(f['x'], params) # Enregistre en métadonnée les paramètres
+    f["rho"] = U[1:N+1, i_mass]
+    f["momentum"] = U[1:N+1, i_mom]
+    f["energy"] = U[1:N+1, i_erg]
+
+    Q = conservative_into_primitive(U, params)
+
+    f["pressure"] = Q[1:N+1, j_press]
+    f["speed"] = Q[1:N+1, j_speed]       
     
     return
 
