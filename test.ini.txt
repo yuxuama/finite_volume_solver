@@ -1,8 +1,9 @@
 Gamma: 1.4
 N: 400
-T end: 0.2
+T end: 0.1
 CFL: 0.9
-BC: Neumann
+BC: Periodic
 freq out: 0.02
-input name: Sod shock
-output name: Sod shock
+name: Periodic Sod shock
+input name: Sod shock periodic
+output name: Sod shock periodic

@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 import h5py
+from utils import create_all_attribute
 
 # Paramètre de la simulation
 
@@ -12,14 +13,16 @@ j_mass = 0 # Pour les tableaux de grandeurs primitives
 j_press = 1
 j_speed = 2
 
-p_gamma = 0 # Pour les paramètres de la simulation
+p_gamma = 0 # Pour le tuple des paramètres
 p_N = 1
 p_T_end = 2
 p_CFL = 3
 p_BC = 4
 p_freq_out = 5
-p_in = 6
-p_out = 7
+p_name = 6
+p_in = 7
+p_out = 8
+
 
 # Utils
 
@@ -99,45 +102,48 @@ def solve(params):
     en utilisant les conditions initiales données par U_i
     Enregistre les états du système avec une fréquence de `freq_io`"""
     
+    N = params[p_N] # Pour la clareté
+
     # tableaux pour sauvegarder l'état
     
     f = h5py.File(params[p_in], 'r')
 
-    U_old = f['main'][:]
+    U_old = f['data'][:]
     U = np.zeros_like(U_old)
 
     # Discretisation de l'espace
-    dx = 1 / params[p_N]
+    dx = 1 / N
 
-    mask = np.arange(params[p_N]+2) # Permet de condenser les écritures plus tard
+    mask = np.arange(N+2) # Permet de condenser les écritures plus tard
 
     t = 0
 
     while t < params[p_T_end]:
         
         max_speed_info = np.max(np.abs(get_speed(U_old, mask)) + get_sound_speed(U_old, mask, params))
-        cfl = 0.9
-        dt = cfl * dx / max_speed_info
+        dt = params[p_CFL] * dx / max_speed_info
         
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
-        for i in range(1, params[p_N]+1):
+        for i in range(1, N+1):
             U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
         
         if params[p_BC] == 'neumann':
             U[0] = U[1] 
-            U[params[p_N]+1] = U[params[p_N]]
+            U[N+1] = U[N]
         elif params[p_BC] == 'periodic':
-            U[0] = U[params[p_N]]
-            U[params[p_N] + 1] = U[1]
+            U[0] = U[N]
+            U[N + 1] = U[1]
 
         U_old = U.copy()
         t = t+dt
 
     with h5py.File(params[p_out], "w") as f:
-        dset = f.create_dataset('main', (params[p_N]+2, 3), dtype=float)
+        dset = f.create_dataset('data', (N+2, 3), dtype=float)
         dset[:] = U
+        create_all_attribute(dset, params)
+        
     
     return
 

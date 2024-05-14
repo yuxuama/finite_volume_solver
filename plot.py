@@ -12,17 +12,20 @@ def plot_density(filepath):
 
     # Load file
     f = h5py.File(filepath, 'r')
-    data = f['main'][:]
+    dset = f['data']
 
     # Extraction d'information
-    N = data.shape[0] - 2
+    N = dset.attrs.get("N")
+    time = dset.attrs.get("T end")
+    name = dset.attrs.get("name")
 
     # Axe des abscisse
     x = np.linspace(0, 1, N)
 
     # Axe des ordonnées
 
-    plt.plot(x, data[1:N+1, i_mass])
+    plt.title("{0} @ t = {1} s".format(name, time))
+    plt.plot(x, dset[1:N+1, i_mass])
     plt.ylabel("Densité")
     plt.xlabel('$x$')
     plt.show()

@@ -9,8 +9,10 @@ p_T_end = 2
 p_CFL = 3
 p_BC = 4
 p_freq_out = 5
-p_in = 6
-p_out = 7
+p_name = 6
+p_in = 7
+p_out = 8
+
 
 if __name__ == '__main__':
     params = init_param('test.ini.txt')
