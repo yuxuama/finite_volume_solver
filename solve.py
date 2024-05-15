@@ -15,14 +15,14 @@ def compute_flux(U, i, j, params, axis):
     if axis == 0: # Axe des abscisses
         i_prev = i-1
         j_prev = j
-        speed = get_speed_x
+        ul = get_speed_x(U, i_prev, j_prev)
+        ur = get_speed_x(U, i, j) 
     elif axis == 1:
         i_prev = i
         j_prev = j-1
-        speed = get_speed_y
+        ul = get_speed_y(U, i_prev, j_prev)
+        ur = get_speed_y(U, i, j)
 
-    ul = speed(U, i_prev, j_prev)
-    ur = speed(U, i, j) 
     pl = get_pressure(U, i_prev, j_prev, params)
     pr = get_pressure(U, i, j, params)
 
@@ -57,8 +57,7 @@ def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
     for i in prange(1, nx+1):
         for j in prange(1, ny+1):
-            U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) \
-                    - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
+            U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
 
 
 def compute_max_speed_info(U, nx, ny, params):
@@ -95,7 +94,7 @@ def solve(params):
     t = 0
     while t < params[p_T_end]:
         max_speed_info = compute_max_speed_info(U_old, nx, ny, params)
-        dt = (params[p_CFL] / max_speed_info) * (1/dx + 1/dy)
+        dt = (params[p_CFL] / max_speed_info) * 1. / (1/dx + 1/dy)
         
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
@@ -115,6 +114,7 @@ def solve(params):
 
         U_old = U.copy()
         t += dt
+        print(100 * t / params[p_T_end])
     # Storage in output file
 
     save(U, params)      

@@ -43,9 +43,9 @@ def plot_density_slice(filepath, slice_index, axis, ax=None, **kwargs):
         plot = True
     
     if axis == 'x':
-        data = f["rho"][:, slice_index]
-    elif axis == 'y':
         data = f["rho"][slice_index]
+    elif axis == 'y':
+        data = f["rho"][:,slice_index]
 
     ax.set_title("{0} (Densité) @ t = {1} s".format(name, time))
     ax.plot(dset[:], data, **kwargs)
@@ -64,6 +64,13 @@ def plot_density(filepath):
 
     xm, ym = np.meshgrid(dset_x, dset_y)
 
+    # Extracting info
+    name = f['metadata'].attrs.get("name")
+    T_end = f["metadata"].attrs.get("T end")
+
+    plt.title("{0} (Densité) @ t = {1} s".format(name, T_end))
+    plt.xlabel('$x$')
+    plt.ylabel('$y$')
     plt.pcolormesh(xm, ym, f["rho"][:])
     plt.show()
 
@@ -148,4 +155,4 @@ def plot_all_primitive(filepath):
     plt.show()
 
 if __name__ == "__main__":
-    plot_density_slice('./out/sod_shock_2d.h5', 50, 0)
+    pass

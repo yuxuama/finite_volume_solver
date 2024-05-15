@@ -1,10 +1,10 @@
 Gamma: 1.4
-nx: 100
+nx: 200
 ny: 100
 Lx: 1
 Ly: 1
 T end: 0.2
-CFL: 0.4
+CFL: 0.9
 BC: neumann
 freq out: 0.02
 name: Sod shock 2D
