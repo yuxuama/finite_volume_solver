@@ -16,19 +16,19 @@ def compute_flux(U, i, j, params, axis):
     if axis == 0: # Axe des abscisses
         i_prev = i-1
         j_prev = j
-        ul = get_speed_x(U, i_prev, j_prev)
-        ur = get_speed_x(U, i, j) 
+        ul = get_speed_x(U[i_prev, j_prev])
+        ur = get_speed_x(U[i, j])
     elif axis == 1:
         i_prev = i
         j_prev = j-1
-        ul = get_speed_y(U, i_prev, j_prev)
-        ur = get_speed_y(U, i, j)
+        ul = get_speed_y(U[i_prev, j_prev])
+        ur = get_speed_y(U[i, j])
 
-    pl = get_pressure(U, i_prev, j_prev, params)
-    pr = get_pressure(U, i, j, params)
+    pl = get_pressure(U[i_prev, j_prev], params)
+    pr = get_pressure(U[i, j], params)
 
     # Paramètre de couplage vitesse pression
-    a = 1.1 * max(U[i_prev, j_prev, i_mass] * get_sound_speed(U, i_prev, j_prev, params), U[i, j, i_mass] * get_sound_speed(U, i, j, params))
+    a = 1.1 * max(U[i_prev, j_prev, i_mass] * get_sound_speed(U[i_prev, j_prev], params), U[i, j, i_mass] * get_sound_speed(U[i, j], params))
 
     # Vitese à l'interface
     u_star = (ul + ur - (pr - pl) / a) / 2
@@ -61,16 +61,6 @@ def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
             U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
 
 
-def compute_max_speed_info(U, nx, ny, params):
-    """Calcule la vitesse maximal de l'information"""
-    speed_info = np.zeros((nx, ny))
-    for i in prange(1, nx+1):
-        for j in prange(1, ny+1):
-            speed_info[i-1, j-1] = np.abs(get_speed(U, i, j)) + get_sound_speed(U, i, j, params)
-
-    return np.max(speed_info)
-
-
 def solve(params):
     """Résout le problème du tube de Sod grâce à la méthode des volumes finis sur un temps `T_end`
     en utilisant les conditions initiales données par U_i
@@ -93,9 +83,9 @@ def solve(params):
     # Calcul de l'évolution
 
     t = 0
-    pbar = tqdm.tqdm(total=100)
+    pbar = tqdm.tqdm(total = 100)
     while t < params[p_T_end]:
-        max_speed_info = compute_max_speed_info(U_old, nx, ny, params)
+        max_speed_info = np.max(np.abs(get_speed(U_old.T)) + get_sound_speed(U_old.T, params))
         dt = (params[p_CFL] / max_speed_info) * 1. / (1/dx + 1/dy)
         
         if t+dt > params[p_T_end]:

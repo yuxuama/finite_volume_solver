@@ -110,31 +110,32 @@ def save(U, params, filepath=None, masks=None):
 # Conservatives and primitives utils
 
 @njit
-def get_speed_x(U, i, j):
-    """Renvoie la vitesse du fluide selon x"""
-    return U[i, j, i_momx] / U[i, j, i_mass]
+def get_speed_x(U):
+    """Renvoie la vitesse du fluide selon x
+    """
+    return U[i_momx] / U[i_mass]
 
 @njit
-def get_speed_y(U, i, j):
+def get_speed_y(U):
     """Renvoie la vitesse du fluide selon y"""
-    return U[i, j, i_momy] / U[i, j, i_mass]
+    return U[i_momy] / U[i_mass]
 
 @njit
-def get_speed(U, i, j):
+def get_speed(U):
     """Renvoie la vitesse du fluide dans la case i"""
-    return np.sqrt((get_speed_x(U, i, j))**2 + (get_speed_y(U, i, j))**2)
+    return np.sqrt((get_speed_x(U))**2 + (get_speed_y(U))**2)
 
 @njit
-def get_pressure(U, i, j, params):
+def get_pressure(U, params):
     """Renvoie la pression du fluide dans la case i"""
-    erg_kin = 0.5 * (U[i, j, i_momx] ** 2 / U[i, j, i_mass] + U[i, j, i_momy] ** 2 / U[i, j, i_mass])
-    erg_intern = U[i, j, i_erg] - erg_kin
+    erg_kin = 0.5 * (U[i_momx] ** 2 / U[i_mass] + U[i_momy] ** 2 / U[i_mass])
+    erg_intern = U[i_erg] - erg_kin
     return (params[p_gamma] - 1) * erg_intern
 
 @njit
-def get_sound_speed(U, i, j, params):
+def get_sound_speed(U, params):
     """Renvoie la vitesse du son dans la case de fluide i"""    
-    return np.sqrt(params[p_gamma] * get_pressure(U, i, j, params) / U[i, j, i_mass])
+    return np.sqrt(params[p_gamma] * get_pressure(U, params) / U[i_mass])
 
 def primitive_into_conservative(Q, params):
     """Renvoie le tableau des variables conservatives en partant des variables primitives"""
@@ -150,17 +151,16 @@ def primitive_into_conservative(Q, params):
 def conservative_into_primitive(U, params):
     """Renvoie le tableau des variables primitives en partant des variables conservatives"""
     Q = np.zeros_like(U)
-    mass = U[:, :, i_mass]
     Q[:, :, j_mass] = U[:, :, i_mass]
-    Q[:, :, j_speedx] = U[:, :, i_momx] / mass
-    Q[:, :, j_speedy] = U[:, :, i_momy] / mass
-    for i in range(Q.shape[0]):
-        for j in range(Q.shape[1]):
-            Q[i, j, j_press] = get_pressure(U, i, j, params)
+    Q[:, :, j_speedx] = get_speed_x(U.T).T
+    Q[:, :, j_speedy] = get_speed_y(U.T).T
+    Q[:, :, j_press] = get_pressure(U.T, params).T
     
     return Q
 
 # Test
 
 if __name__ == '__main__':
-    print("test")
+    U = np.ones((20, 10, 4))
+    V = U[0, 0]
+    print(V.shape)
