@@ -16,7 +16,7 @@ p_name = 9
 p_in = 10
 p_out = 11
 
-def plot_density_slice(filepath, slice_index, axis, ax=None, **kwargs):
+def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
     """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
     `ax` permet de plot sur une autre figure
     """
@@ -25,6 +25,23 @@ def plot_density_slice(filepath, slice_index, axis, ax=None, **kwargs):
         axis = 'x'
     elif axis == 1:
         axis = 'y'
+
+    if quantity == 'rho':
+        quantity = "rho"
+        title = "Densité"
+        ylabel = "Densité ($kg.m^{-3}$)"
+    elif quantity == 'u':
+        quantity = "speed x"
+        title = "Vitesse en horizontale"
+        ylabel = "Densité ($kg.m^{-3}$)"
+    elif quantity == 'v':
+        quantity = "speed y"
+        title = "Vitesse verticale"
+        ylabel = "Vitesse ($m.s$)"
+    elif quantity == 'p':
+        quantity = "pressure"
+        title = "Pression"
+        ylabel = "Pression ($Pa$)"
 
     # Load file
     f = h5py.File(filepath, 'r')
@@ -35,24 +52,91 @@ def plot_density_slice(filepath, slice_index, axis, ax=None, **kwargs):
     time = meta.attrs.get("T end")
     name = meta.attrs.get("name")
 
+    # Getting data   
+    if axis == 'x':
+        data = f[quantity][slice_index]
+    elif axis == 'y':
+        data = f[quantity][:,slice_index]
+
     # Plot
     plot = False
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
         plot = True
-    
-    if axis == 'x':
-        data = f["rho"][slice_index]
-    elif axis == 'y':
-        data = f["rho"][:,slice_index]
 
-    ax.set_title("{0} (Densité) @ t = {1} s".format(name, time))
     ax.plot(dset[:], data, **kwargs)
-    ax.set_ylabel("Densité $m^{-3}$")
-    ax.set_xlabel('$x$')
 
     if plot:
+        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel(f'${axis}$')
+        plt.show()
+
+def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
+    """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
+    `a` et `b` paramétrisent la droite selon laquelle on veut faire une coupe
+    """
+    if quantity == 'rho':
+        quantity = "rho"
+        title = "Densité"
+        ylabel = "Densité ($kg.m^{-3}$)"
+    elif quantity == 'u':
+        quantity = "speed x"
+        title = "Vitesse en horizontale"
+        ylabel = "Densité ($kg.m^{-3}$)"
+    elif quantity == 'v':
+        quantity = "speed y"
+        title = "Vitesse verticale"
+        ylabel = "Vitesse ($m.s$)"
+    elif quantity == 'p':
+        quantity = "pressure"
+        title = "Pression"
+        ylabel = "Pression ($Pa$)"
+    
+    # Load file
+    f = h5py.File(filepath, 'r')
+    meta = f['metadata']
+
+    # Extraction d'information
+    time = meta.attrs.get("T end")
+    name = meta.attrs.get("name")
+    Ly = meta.attrs.get('Ly')
+    ny = meta.attrs.get('ny')
+    nx = meta.attrs.get('nx')
+    dy = Ly/ny
+
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
+
+    # Extraction des données selon la droite
+
+    data = f[quantity][:]
+    x = f['x'][:]
+    y_line = a * x + b 
+
+    pre_mask = np.logical_and(y_line > 0, y_line < Ly)
+    y_line = y_line[pre_mask]
+    x = x[pre_mask]
+    y = y_line
+
+    # Conversion en indice
+
+    y_line = y_line / dy
+    y_line = y_line.astype(int)
+    x_line = np.arange(0, nx)
+    x_line = x_line[pre_mask]
+
+    data = data[x_line, y_line]
+    ax.plot(np.sqrt(x**2 + y**2), data, **kwargs)
+
+    if plot:
+        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
+        ax.set_ylabel(ylabel)
         plt.show()
 
 def plot_density(filepath):
@@ -74,85 +158,15 @@ def plot_density(filepath):
     plt.pcolormesh(xm, ym, f["rho"][:])
     plt.show()
 
-def plot_speed(filepath, ax=None, **kwargs):
-    """Affiche la densité dans les datas du fichier HDF5 `filepath`
-    `ax` permet de plot sur une autre figure
-    """
-
-    # Load file
-    f = h5py.File(filepath, 'r')
-    dset_x = f['x']
-
-    # Extraction d'information
-    time = dset_x.attrs.get("T end")
-    name = dset_x.attrs.get("name")
-
-    # Plot
-    plot = False
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        plot = True
-
-    ax.plot(dset_x[:], f["speed"][:], **kwargs)
-    ax.set_title("{0} (Vitesse) @ t = {1} s".format(name, time))
-    ax.set_ylabel("Vitesse ($m.s^{-1}$)")
-    ax.set_xlabel('$x$')
-    
-    if plot:
-        plt.show()
-
-
-def plot_pressure(filepath, ax=None, **kwargs):
-    """Affiche la densité dans les datas du fichier HDF5 `filepath`
-    `ax` permet de plot sur une autre figure
-    """
-
-    # Load file
-    f = h5py.File(filepath, 'r')
-    dset_x = f['x']
-
-    # Extraction d'information
-    time = dset_x.attrs.get("T end")
-    name = dset_x.attrs.get("name")
-
-    # Plot
-    plot = False
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        plot = True
-    
-    ax.plot(dset_x[:], f["pressure"][:], **kwargs)
-    ax.set_title("{0} (Pression) @ t = {1} s".format(name, time))
-    ax.set_ylabel("Pression $Pa$")
-    ax.set_xlabel('$x$')
-
-    if plot:
-        plt.show()
-
-def plot_all_primitive(filepath):
-    """Affiche toutes les grandeurs dans un même graphique"""
-
-    # Load file
-    f = h5py.File(filepath, 'r')
-    dset_x = f['x']
-
-    N = dset_x.attrs.get("N")
-    time = dset_x.attrs.get("T end")
-    name = dset_x.attrs.get("name")
-
-    fig, ax = plt.subplots(1, 3, figsize=(13, 4))
-    fig.suptitle("{0} @ t = {1} s".format(name, time))
-
-    plot_density(filepath, ax=ax[0])
-    ax[0].set( xlabel="$x$", ylabel="Densité $(m^{-3})$", title="Densité")
-    plot_speed(filepath, ax=ax[1])
-    ax[1].set(xlabel="$x$", ylabel="Vitesse ($m.s^{-1}$)", title="Vitesse")
-    plot_pressure(filepath, ax=ax[2])
-    ax[2].set(xlabel="$x$", ylabel="Pression (Pa)", title="Pression")
-
-    plt.show()
 
 if __name__ == "__main__":
-    pass
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_title("Comparaison du choc de Sod dans les différentes directions")
+    ax.set_ylabel("Densité")
+    quantity = "p"
+    plot_slice('./out/sod_shock_2d_10.h5', quantity, 50, 0, ax=ax, label="horizontale")
+    plot_slice('./out/sod_shock_2d_01.h5', quantity, 50, 1, ax=ax, label="verticale")
+    plot_hybrid_slice('./out/sod_shock_2d_11.h5', 1, 0, quantity, ax=ax, label="diagonale")
+    ax.legend()
+    plt.show()

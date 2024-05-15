@@ -2,6 +2,7 @@ import numpy as np
 from numba import njit, jit, prange
 import h5py
 from utils import *
+import tqdm
 
 # Méthode des volumes finis
 
@@ -52,7 +53,7 @@ def compute_flux(U, i, j, params, axis):
     
     return F
 
-@jit(parallel=True)
+@njit(parallel=True)
 def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
     for i in prange(1, nx+1):
@@ -92,6 +93,7 @@ def solve(params):
     # Calcul de l'évolution
 
     t = 0
+    pbar = tqdm.tqdm(total=100)
     while t < params[p_T_end]:
         max_speed_info = compute_max_speed_info(U_old, nx, ny, params)
         dt = (params[p_CFL] / max_speed_info) * 1. / (1/dx + 1/dy)
@@ -114,9 +116,10 @@ def solve(params):
 
         U_old = U.copy()
         t += dt
-        print(100 * t / params[p_T_end])
+        pbar.update(100 * dt / params[p_T_end])
+    
     # Storage in output file
-
+    pbar.close()
     save(U, params)      
     
     return
