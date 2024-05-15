@@ -1,27 +1,35 @@
-import h5py
-from numba import njit
+from numba import njit, jit
 import numpy as np
+import h5py
 
 i_mass = 0 # Pour les tableaux de grandeurs conservatives
-i_mom = 1
-i_erg = 2
+i_momx = 1
+i_momy = 2
+i_erg = 3
 
 j_mass = 0 # Pour les tableaux de grandeurs primitives
 j_press = 1
-j_speed = 2
+j_speedx = 2
+j_speedy = 3
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
-p_N = 1
-p_T_end = 2
-p_CFL = 3
-p_BC = 4
-p_freq_out = 5
-p_name = 6
-p_in = 7
-p_out = 8
+p_nx = 1
+p_ny = 2
+p_Lx = 3
+p_Ly = 4
+p_T_end = 5
+p_CFL = 6
+p_BC = 7
+p_freq_out = 8
+p_name = 9
+p_in = 10
+p_out = 11
 
 param_struct = [  ("Gamma", float),
-                ("N", int),
+                ("nx", int),
+                ("ny", int),
+                ("Lx", float),
+                ("Ly", float),
                 ("T end", float),
                 ("CFL", float),
                 ("BC", str),
@@ -53,62 +61,106 @@ def init_param(filename):
     params[p_out] = "./out/" + params[p_out] + '.h5'
     return tuple(params) # Pour que numba fonctionne (objet non modifiable)
 
-def create_all_attribute(hdf_dset, params):
+def create_all_attribute(dset, params):
     """Met en attribut d'un hdf5 tous les paramètres de la simumation"""
-    for i in range(7):
-        hdf_dset.attrs.create(param_struct[i][0], params[i])
+    for i in range(len(param_struct)):
+        if param_struct[i][0] in dset.attrs.keys():
+            dset.attrs.modify(param_struct[i][0], params[i])
+        else:
+            dset.attrs.create(param_struct[i][0], params[i])
 
 def extract_parameter(dset):
     """Récupère les paramètres en utilisant les attributs d'un dataset"""
-    params = [0 for i in range(len(param_struct))]
+    params = [0 for _ in range(len(param_struct))]
     for i in range(len(param_struct)):
         params[i] = dset.attrs.get(param_struct[i][0])
     return tuple(params)
 
+def save(U, params, filepath=None, masks=None):
+    """Sauvegarde les données de U dans un fichier HDF5"""
+
+    nx = params[p_nx]
+    ny = params[p_ny]
+
+    if masks is None:
+        mask_x = np.arange(1, nx+1) 
+        mask_y = np.arange(1, ny+1) 
+        mask_x, mask_y = np.meshgrid(mask_x, mask_y)
+
+    if filepath is not None:
+        f = h5py.File(filepath, "w")
+    else:
+        f =  h5py.File(params[p_out], "w")
+    
+    f["x"] = np.linspace(0, params[p_Lx], nx)
+    f["y"] = np.linspace(0, params[p_Ly], ny)
+    f.create_group('metadata')
+    create_all_attribute(f['metadata'], params) # Enregistre en métadonnée les paramètres
+    f["rho"] = U[mask_x, mask_y, i_mass]
+    f["momentum x"] = U[mask_x, mask_y, i_momx]
+    f["momentum y"] = U[mask_x, mask_y, i_momy]
+    f["energy"] = U[mask_x, mask_y, i_erg]
+
+    Q = conservative_into_primitive(U, params)
+
+    f["pressure"] = Q[mask_x, mask_y, j_press]
+    f["speed x"] = Q[mask_x, mask_y, j_speedx]       
+    f["speed y"] = Q[mask_x, mask_y, j_speedx] 
+
 # Conservatives and primitives utils
 
 @njit
-def get_speed(U=np.ndarray, i=int):
-    """Renvoie la vitesse du fluide dans la case i"""
-    return U[i, i_mom] / U[i, i_mass]
+def get_speed_x(U, i, j):
+    """Renvoie la vitesse du fluide selon x"""
+    return U[i, j, i_momx] / U[i, j, i_mass]
 
 @njit
-def get_pressure(U, i, params):
+def get_speed_y(U, i, j):
+    """Renvoie la vitesse du fluide selon y"""
+    return U[i, j, i_momy] / U[i, j, i_mass]
+
+@njit
+def get_speed(U, i, j):
+    """Renvoie la vitesse du fluide dans la case i"""
+    return np.sqrt((get_speed_x(U, i, j))**2 + (get_speed_y(U, i, j))**2)
+
+@njit
+def get_pressure(U, i, j, params):
     """Renvoie la pression du fluide dans la case i"""
-    erg_kin = 0.5 * U[i, i_mom] ** 2 / U[i, i_mass]
-    erg_intern = U[i, i_erg] - erg_kin
+    erg_kin = 0.5 * (U[i, j, i_momx] ** 2 / U[i, j, i_mass] + U[i, j, i_momy] ** 2 / U[i, j, i_mass])
+    erg_intern = U[i, j, i_erg] - erg_kin
     return (params[p_gamma] - 1) * erg_intern
 
 @njit
-def get_sound_speed(U, i, params):
+def get_sound_speed(U, i, j, params):
     """Renvoie la vitesse du son dans la case de fluide i"""    
-    return np.sqrt(params[p_gamma] * get_pressure(U, i, params) / U[i, i_mass])
+    return np.sqrt(params[p_gamma] * get_pressure(U, i, j, params) / U[i, j, i_mass])
 
-@njit
 def primitive_into_conservative(Q, params):
     """Renvoie le tableau des variables conservatives en partant des variables primitives"""
     U = np.zeros_like(Q)
-    U[:, i_mass] = Q[:, j_mass]
-    U[:, i_mom] = Q[:, j_mass] * Q[:, j_speed]
-    U[:, i_erg] = (Q[:, j_press] / (params[p_gamma] - 1)) + U[:, i_mom]**2 / (2 * U[:, i_mass])
+    densite_temp = Q[:, :, j_mass]
+    U[:, :, i_mass] = densite_temp
+    U[:, :, i_momx] = densite_temp * Q[:, :, j_speedx]
+    U[:, :, i_momy] = densite_temp * Q[:, :, j_speedy]
+    U[:, :, i_erg] = (Q[:, :, j_press] / (params[p_gamma] - 1)) + U[:,:, i_momx]**2 / (2 * densite_temp) + U[:, :, i_momy]**2 / (2 * densite_temp)
 
     return U
 
-@njit
 def conservative_into_primitive(U, params):
     """Renvoie le tableau des variables primitives en partant des variables conservatives"""
     Q = np.zeros_like(U)
-    mask = np.arange(Q.shape[0])
-    Q[:, j_mass] = U[:, 0]
-    Q[:, j_speed] = get_speed(U, mask)
-    Q[:, j_press] = get_pressure(U, mask, params)
+    mass = U[:, :, i_mass]
+    Q[:, :, j_mass] = U[:, :, i_mass]
+    Q[:, :, j_speedx] = U[:, :, i_momx] / mass
+    Q[:, :, j_speedy] = U[:, :, i_momy] / mass
+    for i in range(Q.shape[0]):
+        for j in range(Q.shape[1]):
+            Q[i, j, j_press] = get_pressure(U, i, j, params)
     
     return Q
-
-# From files
-# TODO
 
 # Test
 
 if __name__ == '__main__':
-    print(init_param('./test.ini.txt'))
+    print("test")

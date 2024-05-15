@@ -6,17 +6,28 @@ from utils import *
 # Méthode des volumes finis
 
 @njit
-def compute_flux(U, i, params):
-    """Renvoie le flux à l'interface entre les case i-1 et i (interface gauche)
+def compute_flux(U, i, j, params, axis):
+    """Renvoie le flux à l'interface entre les case
+    Si axis = 0: renvoie le flux à l'interface gauche de la case (i,j)
+    Si axis = 1: renvoir le flux à l'interface basse de la case (i,j)
     On utilise le solveur de Riemann"""
     
-    ul = get_speed(U, i-1)
-    ur = get_speed(U, i) 
-    pl = get_pressure(U, i-1, params)
-    pr = get_pressure(U, i, params)
+    if axis == 0: # Axe des abscisses
+        i_prev = i-1
+        j_prev = j
+        speed = get_speed_x
+    elif axis == 1:
+        i_prev = i
+        j_prev = j-1
+        speed = get_speed_y
+
+    ul = speed(U, i_prev, j_prev)
+    ur = speed(U, i, j) 
+    pl = get_pressure(U, i_prev, j_prev, params)
+    pr = get_pressure(U, i, j, params)
 
     # Paramètre de couplage vitesse pression
-    a = 1.1 * max(U[i-1, i_mass] * get_sound_speed(U, i-1, params), U[i, i_mass] * get_sound_speed(U, i, params))
+    a = 1.1 * max(U[i_prev, j_prev, i_mass] * get_sound_speed(U, i_prev, j_prev, params), U[i, j, i_mass] * get_sound_speed(U, i, j, params))
 
     # Vitese à l'interface
     u_star = (ul + ur - (pr - pl) / a) / 2
@@ -26,76 +37,87 @@ def compute_flux(U, i, params):
 
     # Grandeur upwind
     if u_star >= 0:
-        U_up = U[i-1,:]
+        U_up = U[i_prev, j_prev, :]
     else:
-        U_up = U[i, :]
+        U_up = U[i, j, :]
     
     # Calcul du flux
     F = U_up * u_star
-    F[1] += p_star
-    F[2] += p_star * u_star
+    if axis == 0:
+        F[i_momx] += p_star
+        F[i_erg] += p_star * u_star
+    elif axis == 1:
+        F[i_momy] += p_star
+        F[i_erg] += p_star * u_star
     
     return F
 
 @jit(parallel=True)
-def inside_loop(U, U_old, dt, dx, N, params):
-    for i in prange(1, N+1):
-        U[i] = U_old[i] - (dt/dx) * (compute_flux(U_old, i+1, params) - compute_flux(U_old, i, params))
+def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
+    """Relation de récurrence entre les vecteurs U"""
+    for i in prange(1, nx+1):
+        for j in prange(1, ny+1):
+            U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) \
+                    - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
+
+
+def compute_max_speed_info(U, nx, ny, params):
+    """Calcule la vitesse maximal de l'information"""
+    speed_info = np.zeros((nx, ny))
+    for i in prange(1, nx+1):
+        for j in prange(1, ny+1):
+            speed_info[i-1, j-1] = np.abs(get_speed(U, i, j)) + get_sound_speed(U, i, j, params)
+
+    return np.max(speed_info)
+
 
 def solve(params):
     """Résout le problème du tube de Sod grâce à la méthode des volumes finis sur un temps `T_end`
     en utilisant les conditions initiales données par U_i
     Enregistre les états du système avec une fréquence de `freq_io`"""
     
-    N = params[p_N] # Pour la clareté
+    nx = params[p_nx]
+    ny = params[p_ny]
 
-    # Tableaux pour sauvegarder l'état
+    # Array des états du système à un instant t et t+dt (shape = (nx, ny, 4))
     
-    f = h5py.File(params[p_in], 'r') # Chargement de l'état initial
+    f = h5py.File(params[p_in], 'r')
 
     U_old = f['data'][:]
     U = np.zeros_like(U_old)
 
     # Discretisation de l'espace
-    dx = 1 / N
+    dx = params[p_Lx] / nx
+    dy = params[p_Ly] / ny
 
-    mask = np.arange(N+2) # Permet de condenser les écritures plus tard
+    # Calcul de l'évolution
 
     t = 0
-
     while t < params[p_T_end]:
-        
-        max_speed_info = np.max(np.abs(get_speed(U_old, mask)) + get_sound_speed(U_old, mask, params))
-        dt = params[p_CFL] * dx / max_speed_info
+        max_speed_info = compute_max_speed_info(U_old, nx, ny, params)
+        dt = (params[p_CFL] / max_speed_info) * (1/dx + 1/dy)
         
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
-        inside_loop(U, U_old, dt, dx, N, params)
+        inside_loop(U, U_old, dt, dx, dy, nx, ny, params)
         
         if params[p_BC] == 'neumann':
             U[0] = U[1] 
-            U[N+1] = U[N]
+            U[nx+1] = U[nx]
+            U[:, 0] = U[:, 1]
+            U[:, ny+1] = U[:, ny]
         elif params[p_BC] == 'periodic':
-            U[0] = U[N]
-            U[N + 1] = U[1]
+            U[0] = U[nx]
+            U[nx + 1] = U[1]
+            U[:, 0] = U[:, ny]
+            U[:, ny+1] = U[:, 1]
 
         U_old = U.copy()
-        t = t+dt
-
+        t += dt
     # Storage in output file
 
-    f =  h5py.File(params[p_out], "w")
-    f["x"] = np.linspace(0, 1, N)
-    create_all_attribute(f['x'], params) # Enregistre en métadonnée les paramètres
-    f["rho"] = U[1:N+1, i_mass]
-    f["momentum"] = U[1:N+1, i_mom]
-    f["energy"] = U[1:N+1, i_erg]
-
-    Q = conservative_into_primitive(U, params)
-
-    f["pressure"] = Q[1:N+1, j_press]
-    f["speed"] = Q[1:N+1, j_speed]       
+    save(U, params)      
     
     return
 

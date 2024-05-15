@@ -3,6 +3,8 @@ from utils import get_speed, get_pressure, extract_parameter
 import h5py
 import matplotlib.pyplot as plt
 
+# Pour les paramètres N = 100, L=1, CSL=0.9, Tend=0.2
+
 # Load file
 f = h5py.File('./out/sod shock.h5', 'r')
 dset = f['data']
