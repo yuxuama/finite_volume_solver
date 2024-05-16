@@ -57,7 +57,7 @@ def compute_flux(U, i, j, params, axis):
 def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
     for i in prange(1, nx+1):
-        for j in prange(1, ny+1):
+        for j in prange(1, ny+1):             
             U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
 
 @njit(parallel=True)
@@ -66,9 +66,6 @@ def compute_dt(U, nx, ny, dx, dy, params):
     dt = params[p_T_end] + 2
     for i in prange(1, nx + 1):
         for j in prange(1, ny+1):
-            p = get_pressure(U[i, j], params)
-            if p <= 0 or np.isnan(p):
-                print(i, j) 
             speed_info = np.abs(get_speed(U[i, j])) + get_sound_speed(U[i, j], params)
             dt_loc = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
             dt = min(dt, dt_loc)
@@ -96,12 +93,11 @@ def solve(params):
     # Calcul de l'évolution
 
     t = 0
+    pbar = tqdm.tqdm(total=100)
     while t < params[p_T_end]:
-        #dt = compute_dt(U_old, nx, ny, dx, dy, params)
-        dt = 1e-4
+        dt = compute_dt(U_old, nx, ny, dx, dy, params)
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
-        print(100*t/ params[p_T_end])
 
         inside_loop(U, U_old, dt, dx, dy, nx, ny, params)
         
@@ -111,14 +107,17 @@ def solve(params):
             U[:, 0, :] = U[:, 1, :]
             U[:, ny+1, :] = U[:, ny, :]
         elif params[p_BC] == 'periodic':
-            U[0] = U[nx]
-            U[nx + 1] = U[1]
-            U[:, 0] = U[:, ny]
-            U[:, ny+1] = U[:, 1]
+            U[0, :, :] = U[nx, :, :]
+            U[nx + 1, :, :] = U[1, :, :]
+            U[:, 0, :] = U[:, ny, :]
+            U[:, ny+1, :] = U[:, 1, :]
 
         U_old = U.copy()
         t += dt
+        pbar.update(100*dt/ params[p_T_end])
     
+    pbar.close()
+
     # Storage in output file
     save(U, params)      
     

@@ -66,10 +66,10 @@ def sod_shock_tube(params, direction):
 
 def riemann_problem_2d(params):
     """Défini les conditions initiales pour le problème de Riemann 2D"""
-    bottom_left = np.array([0.138, 1.206, 1.206, 0.029])
-    bottom_right = np.array([0.5323, 0.0, 1.206, 0.3])
-    top_left = np.array([0.5323, 1.206, 0.0, 0.3])
-    top_right = np.array([1.5, 0.0, 0.0, 1.5])
+    bottom_left = np.array([0.138, 0.029, 1.206, 1.206])
+    bottom_right = np.array([0.5323, 0.3, 0.0, 1.206])
+    top_left = np.array([0.5323, 0.3, 1.206, 0.0])
+    top_right = np.array([1.5, 1.5, 0.0, 0.0])
 
     nx = params[p_nx]
     ny = params[p_ny]

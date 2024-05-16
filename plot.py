@@ -152,10 +152,13 @@ def plot_density(filepath):
     name = f['metadata'].attrs.get("name")
     T_end = f["metadata"].attrs.get("T end")
 
-    plt.title("{0} (Densité) @ t = {1} s".format(name, T_end))
-    plt.xlabel('$x$')
-    plt.ylabel('$y$')
-    plt.pcolormesh(xm, ym, f["rho"][:])
+    ax = plt.subplot()
+
+    ax.set_title("{0} (Densité) @ t = {1} s".format(name, T_end))
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$y$')
+    ax.set_aspect('equal', adjustable='box')
+    ax.pcolormesh(xm, ym, f["rho"][:])
     plt.show()
 
 

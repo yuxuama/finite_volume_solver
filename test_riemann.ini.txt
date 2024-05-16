@@ -1,9 +1,9 @@
 Gamma: 1.4
-nx: 100
-ny: 100
+nx: 150
+ny: 150
 Lx: 1
 Ly: 1
-T end: 0.2
+T end: 0.8
 CFL: 0.4
 BC: neumann
 freq out: 0.02
