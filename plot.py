@@ -160,13 +160,4 @@ def plot_density(filepath):
 
 
 if __name__ == "__main__":
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    ax.set_title("Comparaison du choc de Sod dans les différentes directions")
-    ax.set_ylabel("Densité")
-    quantity = "rho"
-    plot_slice('./out/sod_shock_2d_10.h5', quantity, 50, 0, ax=ax, label="horizontale")
-    plot_slice('./out/sod_shock_2d_01.h5', quantity, 50, 1, ax=ax, label="verticale")
-    plot_hybrid_slice('./out/sod_shock_2d_11.h5', 1, 0, quantity, ax=ax, label="diagonale")
-    ax.legend()
-    plt.show()
+    plot_density('./out/riemann_2d.h5')

@@ -60,6 +60,19 @@ def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
         for j in prange(1, ny+1):
             U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
 
+@njit(parallel=True)
+def compute_dt(U, nx, ny, dx, dy, params):
+    """Calcule le pas de temps pour la simulation"""
+    dt = params[p_T_end] + 2
+    for i in prange(1, nx + 1):
+        for j in prange(1, ny+1):
+            p = get_pressure(U[i, j], params)
+            if p <= 0 or np.isnan(p):
+                print(i, j) 
+            speed_info = np.abs(get_speed(U[i, j])) + get_sound_speed(U[i, j], params)
+            dt_loc = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
+            dt = min(dt, dt_loc)
+    return dt
 
 def solve(params):
     """Résout le problème du tube de Sod grâce à la méthode des volumes finis sur un temps `T_end`
@@ -83,36 +96,30 @@ def solve(params):
     # Calcul de l'évolution
 
     t = 0
-    pbar = tqdm.tqdm(total = 100)
     while t < params[p_T_end]:
-        max_speed_info = np.max(np.abs(get_speed(U_old.T)) + get_sound_speed(U_old.T, params))
-        dt = (params[p_CFL] / max_speed_info) * 1. / (1/dx + 1/dy)
-        print(dt)
-        print(np.sum((U_old[:, :, 0] <= 0 ).astype(int)))
-        
+        #dt = compute_dt(U_old, nx, ny, dx, dy, params)
+        dt = 1e-4
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
+        print(100*t/ params[p_T_end])
 
         inside_loop(U, U_old, dt, dx, dy, nx, ny, params)
         
         if params[p_BC] == 'neumann':
-            U[0] = U[1] 
-            U[nx+1] = U[nx]
-            U[:, 0] = U[:, 1]
-            U[:, ny+1] = U[:, ny]
+            U[0, :, :] = U[1, :, :] 
+            U[nx+1, :, :] = U[nx, :, :]
+            U[:, 0, :] = U[:, 1, :]
+            U[:, ny+1, :] = U[:, ny, :]
         elif params[p_BC] == 'periodic':
             U[0] = U[nx]
             U[nx + 1] = U[1]
             U[:, 0] = U[:, ny]
             U[:, ny+1] = U[:, 1]
 
-        print(np.sum((U[:, :, 0] <=0 ).astype(int)))
         U_old = U.copy()
         t += dt
-        pbar.update(100 * dt / params[p_T_end])
     
     # Storage in output file
-    pbar.close()
     save(U, params)      
     
     return

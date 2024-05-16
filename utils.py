@@ -1,4 +1,4 @@
-from numba import njit, jit
+from numba import njit, prange
 import numpy as np
 import h5py
 
@@ -137,6 +137,7 @@ def get_sound_speed(U, params):
     """Renvoie la vitesse du son dans la case de fluide i"""    
     return np.sqrt(params[p_gamma] * get_pressure(U, params) / U[i_mass])
 
+@njit
 def primitive_into_conservative(Q, params):
     """Renvoie le tableau des variables conservatives en partant des variables primitives"""
     U = np.zeros_like(Q)
@@ -148,12 +149,15 @@ def primitive_into_conservative(Q, params):
 
     return U
 
+@njit
 def conservative_into_primitive(U, params):
     """Renvoie le tableau des variables primitives en partant des variables conservatives"""
     Q = np.zeros_like(U)
     Q[:, :, j_mass] = U[:, :, i_mass]
-    Q[:, :, j_speedx] = get_speed_x(U.T).T
-    Q[:, :, j_speedy] = get_speed_y(U.T).T
-    Q[:, :, j_press] = get_pressure(U.T, params).T
+    for i in prange(params[p_nx]+2):
+        for j in prange(params[p_ny]+2):
+            Q[i, j, j_speedx] = get_speed_x(U[i, j])
+            Q[i, j, j_speedy] = get_speed_y(U[i, j])
+            Q[i, j, j_press] = get_pressure(U[i, j], params)
     
     return Q

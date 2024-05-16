@@ -6,9 +6,8 @@ import time
 
 if __name__ == '__main__':
     params = init_param('test_riemann.ini.txt')
-    riemann_problem_2d(params)
-    #solve(params)
-    #plot_density(params[-1])
+    solve(params)
+    plot_density(params[-1])
     
 
     

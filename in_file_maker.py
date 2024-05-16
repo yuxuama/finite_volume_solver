@@ -39,9 +39,7 @@ def sod_shock_tube(params, direction):
     for i in range(1, nx+1):
         for j in range(1, ny+1):
             dot_product = direction[0] * ((i-1) * dx - Lx/2) + direction[1] * ((j-1) * dy - Ly/2)
-
             if dot_product <= 0:
-                count += 1
                 Q[i, j] *= high
             elif dot_product > 0:
                 Q[i, j] *= low 
@@ -56,6 +54,9 @@ def sod_shock_tube(params, direction):
         Q[nx + 1] = Q[nx]
         Q[:, 0] = Q[:, 1]
         Q[:, ny+1] = Q[:, ny]
+    
+    plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
+    plt.show()
 
     with h5py.File(params[p_in], 'w') as f:
         f['data'] = primitive_into_conservative(Q, params)

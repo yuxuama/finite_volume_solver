@@ -3,10 +3,10 @@ nx: 100
 ny: 100
 Lx: 1
 Ly: 1
-T end: 0.2
-CFL: 0.9
+T end: 10
+CFL: 0.4
 BC: neumann
 freq out: 0.02
-name: 2D Riemann
-input name: riemann_2d
-output name: riemann_2d
+name: 2D SOD
+input name: sod_shock_2d_11
+output name: sod_shock_2d_11
