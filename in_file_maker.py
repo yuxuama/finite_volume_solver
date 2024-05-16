@@ -60,7 +60,6 @@ def sod_shock_tube(params, direction):
         f.create_group('metadata')
         create_all_attribute(f['metadata'], params)
     
-
 def riemann_problem_2d(params):
     """Défini les conditions initiales pour le problème de Riemann 2D"""
     bottom_left = np.array([0.138, 0.029, 1.206, 1.206])
@@ -150,6 +149,54 @@ def rt_instability(params, C):
                 Q[i, j, 0] = 2
             Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
             Q[i, j, 3] = 0.25 * C * (1 + np.cos(4 * np.pi * (x - 0.5 * Lx))) * (1 + np.cos(3 * np.pi * (y - 0.5 * Ly)))
+     
+    if params[p_BC] == 'periodic':
+        periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_primitive=True)
+    
+    fig, ax = plt.subplots(1, 4, figsize=(15, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(Q[:, :, 0].T)
+    ax[1].pcolormesh(Q[:, :, 1].T)
+    ax[2].pcolormesh(Q[:, :, 2].T)
+    ax[3].pcolormesh(Q[:, :, 3].T)
+    ax[0].set_title("Densité")
+    ax[1].set_title("Pression")
+    ax[2].set_title("Vitesse x")
+    ax[3].set_title("Vitesse y")
+    ax[0].set_aspect('equal', adjustable='box')
+    ax[1].set_aspect('equal', adjustable='box')
+    ax[2].set_aspect('equal', adjustable='box')
+    ax[3].set_aspect('equal', adjustable='box')
+    plt.show()
+    
+    with h5py.File(params[p_in], 'w') as f:
+        f['data'] = primitive_into_conservative(Q, params)
+        f.create_group('metadata')
+        create_all_attribute(f['metadata'], params)
+
+def hydrostatic(params):
+    """Créer le fichier des conditions initiales pour un cas hydrostatique
+    en fonction des paramètres donnés"""
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Lx = params[p_Lx]
+    Ly = params[p_Ly]
+    dy = Ly / ny
+    p0 = 2.5
+
+    # En utilisant les primitives (masse, pression, vitesse)
+
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 1] = p0 * np.ones((nx+2,))
+    Q[:, :, 0] = np.ones((nx+2, ny+2))
+    
+    for i in range(1, nx+1):
+        for j in range(2, ny+1):
+            Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
      
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)

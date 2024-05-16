@@ -4,7 +4,7 @@ nx: 50
 ny: 150
 Lx: 0.5
 Ly: 1.5
-T end: 12.4
+T end: 3
 CFL: 0.4
 BC: reflex
 freq out: 0.02

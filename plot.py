@@ -139,7 +139,7 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
         ax.set_ylabel(ylabel)
         plt.show()
 
-def plot_density(filepath):
+def plot_density(filepath, ax=None, **kwargs):
     """Renvoie la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
     f = h5py.File(filepath, 'r')
@@ -152,15 +152,31 @@ def plot_density(filepath):
     name = f['metadata'].attrs.get("name")
     T_end = f["metadata"].attrs.get("T end")
 
-    ax = plt.subplot()
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
 
-    ax.set_title("{0} (Densité) @ t = {1} s".format(name, T_end))
-    ax.set_xlabel('$x$')
-    ax.set_ylabel('$y$')
     ax.set_aspect('equal', adjustable='box')
-    ax.pcolormesh(xm, ym, f["rho"][:])
-    plt.show()
+    ax.pcolormesh(xm, ym, f["rho"][:], **kwargs)
+
+    if plot:
+        ax.set_title("{0} (Densité) @ t = {1} s".format(name, T_end))
+        ax.set_xlabel('$x$')
+        ax.set_ylabel('$y$')        
+        plt.show()
 
 
 if __name__ == "__main__":
-    plot_density('./out/rt_insta_2d.h5')
+    ax = plt.subplot(1, 3, 1)
+    plot_slice('./out/static_2d.h5', "u", 75, 0, ax=ax)
+    plot_slice('./out/static_2d.h5', "v", 25, 1, ax=ax)
+
+    ax = plt.subplot(1, 3, 2)
+    plot_density('./out/static_2d.h5', ax=ax)
+
+    ax = plt.subplot(1, 3, 3)
+    plot_slice('./out/static_2d.h5', 'rho', 25, 1, ax=ax)    
+    plt.show()

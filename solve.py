@@ -29,7 +29,8 @@ def compute_flux(U, i, j, params, axis, side):
 
         # Terme source
         dy = params[p_Ly] / params[p_ny]
-        m = dy * params[p_g] * (U[i_prev, j_prev, 0] + U[i, j, 0]) / 2
+        m = dy * params[p_g] * 0.5 * (U[i_prev, j_prev, i_mass] + U[i, j, i_mass])
+
 
     pl = get_pressure(U[i_prev, j_prev], params)
     pr = get_pressure(U[i, j], params)
@@ -38,10 +39,10 @@ def compute_flux(U, i, j, params, axis, side):
     a = 1.1 * max(U[i_prev, j_prev, i_mass] * get_sound_speed(U[i_prev, j_prev], params), U[i, j, i_mass] * get_sound_speed(U[i, j], params))
 
     # Vitese à l'interface
-    u_star = (ul + ur - (pr - pl) / a) / 2
+    u_star = 0.5 * (ul + ur - (pr - pl + m) / a)
 
     # Pression à l'interface
-    p_star = (pl + pr - a * (ur - ul)) / 2
+    p_star = 0.5 * (pl + pr - a * (ur - ul))
 
     # Grandeur upwind
     if u_star >= 0:
@@ -92,7 +93,7 @@ def solve(params):
     f = h5py.File(params[p_in], 'r')
 
     U_old = f['data'][:]
-    U = np.zeros_like(U_old)
+    U = np.ones_like(U_old)
 
     # Discretisation de l'espace
     dx = params[p_Lx] / nx
@@ -115,7 +116,6 @@ def solve(params):
         elif params[p_BC] == 'periodic':
             periodic(U, nx, ny)
         elif params[p_BC] == 'reflex':
-            neumann(U, nx, ny)
             U = reflex(U, params)
 
         U_old = U.copy()
