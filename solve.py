@@ -87,6 +87,8 @@ def solve(params):
     while t < params[p_T_end]:
         max_speed_info = np.max(np.abs(get_speed(U_old.T)) + get_sound_speed(U_old.T, params))
         dt = (params[p_CFL] / max_speed_info) * 1. / (1/dx + 1/dy)
+        print(dt)
+        print(np.sum((U_old[:, :, 0] <= 0 ).astype(int)))
         
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
@@ -104,6 +106,7 @@ def solve(params):
             U[:, 0] = U[:, ny]
             U[:, ny+1] = U[:, 1]
 
+        print(np.sum((U[:, :, 0] <=0 ).astype(int)))
         U_old = U.copy()
         t += dt
         pbar.update(100 * dt / params[p_T_end])

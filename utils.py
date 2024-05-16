@@ -157,10 +157,3 @@ def conservative_into_primitive(U, params):
     Q[:, :, j_press] = get_pressure(U.T, params).T
     
     return Q
-
-# Test
-
-if __name__ == '__main__':
-    U = np.ones((20, 10, 4))
-    V = U[0, 0]
-    print(V.shape)
