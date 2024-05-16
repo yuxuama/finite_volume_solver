@@ -13,19 +13,21 @@ j_speedx = 2
 j_speedy = 3
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
-p_nx = 1
-p_ny = 2
-p_Lx = 3
-p_Ly = 4
-p_T_end = 5
-p_CFL = 6
-p_BC = 7
-p_freq_out = 8
-p_name = 9
-p_in = 10
-p_out = 11
+p_g = 1
+p_nx = 2
+p_ny = 3
+p_Lx = 4
+p_Ly = 5
+p_T_end = 6
+p_CFL = 7
+p_BC = 8
+p_freq_out = 9
+p_name = 10
+p_in = 11
+p_out = 12
 
 param_struct = [  ("Gamma", float),
+                ("g", float),
                 ("nx", int),
                 ("ny", int),
                 ("Lx", float),
@@ -56,7 +58,7 @@ def init_param(filename):
                 params[i] = int(line[header_size::])
             i+=1
         
-    assert params[p_BC] in ['neumann', 'periodic']
+    assert params[p_BC] in ['neumann', 'periodic', 'reflex']
     params[p_in] = "./in/" + params[p_in] + '.h5'
     params[p_out] = "./out/" + params[p_out] + '.h5'
     return tuple(params) # Pour que numba fonctionne (objet non modifiable)
@@ -156,8 +158,54 @@ def conservative_into_primitive(U, params):
     Q[:, :, j_mass] = U[:, :, i_mass]
     for i in prange(params[p_nx]+2):
         for j in prange(params[p_ny]+2):
-            Q[i, j, j_speedx] = get_speed_x(U[i, j])
-            Q[i, j, j_speedy] = get_speed_y(U[i, j])
+            Q[i, j, j_speedx] = U[i, j, i_momx] / U[i, j, i_mass]
+            Q[i, j, j_speedy] = U[i, j, i_momy] / U[i, j, i_mass]
             Q[i, j, j_press] = get_pressure(U[i, j], params)
     
     return Q
+
+# Boundary conditions
+
+def neumann(U, nx, ny):
+    """Modifie U pour qu'il vérifie les conditions aux limites de Neumann"""
+    U[0, :, :] = U[1, :, :] 
+    U[nx+1, :, :] = U[nx, :, :]
+    U[:, 0, :] = U[:, 1, :]
+    U[:, ny+1, :] = U[:, ny, :]
+
+def periodic(U, nx, ny):
+    """Modifie U pour qu'il vérifie les conditions aux bords périodique """
+    U[0, :, :] = U[nx, :, :]
+    U[nx + 1, :, :] = U[1, :, :]
+    U[:, 0, :] = U[:, ny, :]
+    U[:, ny+1, :] = U[:, 1, :]
+
+@njit
+def reflex(Q, params, is_primitive=False):
+    """Modifie U pour que le tableaux vérifie les conditions réflexives
+    Périodique selon les x
+    Blocage selon y (fermeture) vérifiant l'équilibre hydro"""
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    dy = Ly/ny
+
+    if not is_primitive:
+        Q = conservative_into_primitive(Q, params)
+    # Périodique selon les x
+    Q[0, :, :] = Q[nx, :, :]
+    Q[nx + 1, :, :] = Q[1, :, :]
+    # Fermeture de la boîte en respectant l'équilibre
+    Q[:, 0, j_mass] = Q[:, 1, j_mass] # Masse
+    Q[:, ny+1, j_mass] = Q[:, ny, j_mass]
+    Q[:, 0, j_speedx] = Q[:, 1, j_speedx] # Vitesse selon x
+    Q[:, ny+1, j_speedx] = Q[:, ny, j_speedx]
+    Q[:, 0, j_speedy] = - Q[:, 1, j_speedy] # Vitesse selon y
+    Q[:, ny+1, j_speedy] = - Q[:, ny, j_speedy]
+    Q[:, 0, j_press] = Q[:, 1, j_press] + params[p_g] * dy * Q[:, 1, j_mass] # Pression (équilibre hydro)
+    Q[:, ny+1, j_press] = Q[:, ny, j_press] - params[p_g] * dy * Q[:, 1, j_mass]
+
+    if not is_primitive:
+        return primitive_into_conservative(Q, params)
+
+

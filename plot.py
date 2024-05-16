@@ -163,4 +163,4 @@ def plot_density(filepath):
 
 
 if __name__ == "__main__":
-    plot_density('./out/riemann_2d.h5')
+    plot_density('./out/rt_insta_2d.h5')

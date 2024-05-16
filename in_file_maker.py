@@ -1,20 +1,21 @@
 import numpy as np
 import h5py
-from utils import init_param, create_all_attribute, primitive_into_conservative
+from utils import init_param, create_all_attribute, primitive_into_conservative, periodic, reflex, neumann
 import matplotlib.pyplot as plt
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
-p_nx = 1
-p_ny = 2
-p_Lx = 3
-p_Ly = 4
-p_T_end = 5
-p_CFL = 6
-p_BC = 7
-p_freq_out = 8
-p_name = 9
-p_in = 10
-p_out = 11
+p_g = 1
+p_nx = 2
+p_ny = 3
+p_Lx = 4
+p_Ly = 5
+p_T_end = 6
+p_CFL = 7
+p_BC = 8
+p_freq_out = 9
+p_name = 10
+p_in = 11
+p_out = 12
 
 
 def sod_shock_tube(params, direction):
@@ -45,16 +46,12 @@ def sod_shock_tube(params, direction):
                 Q[i, j] *= low 
 
     if params[p_BC] == 'periodic':
-        Q[0] = Q[nx]
-        Q[nx + 1] = Q[1]
-        Q[:, 0] = Q[:, ny]
-        Q[:, ny+1] = Q[:, 1]
+        periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        Q[0] = Q[1]
-        Q[nx + 1] = Q[nx]
-        Q[:, 0] = Q[:, 1]
-        Q[:, ny+1] = Q[:, ny]
-    
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_primitive=True)
+
     plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
     plt.show()
 
@@ -98,28 +95,87 @@ def riemann_problem_2d(params):
                     Q[i, j] *= top_right
             
     if params[p_BC] == 'periodic':
-        Q[0] = Q[nx]
-        Q[nx + 1] = Q[1]
-        Q[:, 0] = Q[:, ny]
-        Q[:, ny+1] = Q[:, 1]
+        periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        Q[0] = Q[1]
-        Q[nx + 1] = Q[nx]
-        Q[:, 0] = Q[:, 1]
-        Q[:, ny+1] = Q[:, ny]
-    
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_primitive=True)
     
     with h5py.File(params[p_in], 'w') as f:
         U = primitive_into_conservative(Q, params)
         f['data'] = U
 
         fig, ax = plt.subplots(1, 4, figsize=(15, 4))
+        fig.suptitle("Conditions initiales")
         ax[0].pcolormesh(U[1:nx+1,1:ny+1, 0])
         ax[1].pcolormesh(U[1:nx+1,1:ny+1, 1])
         ax[2].pcolormesh(U[1:nx+1,1:ny+1, 2])
         ax[3].pcolormesh(U[1:nx+1,1:ny+1, 3])
+        ax[0].set_title("Densité")
+        ax[1].set_title("Impulsion x")
+        ax[2].set_title("Impulsion y")
+        ax[3].set_title("Énergie")
         plt.show()
 
+        f.create_group('metadata')
+        create_all_attribute(f['metadata'], params)
+
+def rt_instability(params, C):
+    """Créer le fichier des conditions initiale pour les paramètres donnés
+    et pour le problème de l'instabilité de Rayleigh-Taylor
+    `C` est l'amplitude de la perturbation de l'équilibre hydrostatique
+    """
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Lx = params[p_Lx]
+    Ly = params[p_Ly]
+    dx = Lx / nx
+    dy = Ly / ny
+    p0 = 2.5
+
+    # En utilisant les primitives (masse, pression, vitesse)
+
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 1] = p0 * np.ones((nx+2,))
+    Q[:, 1, 0] = np.ones((nx+2,))
+    
+    for i in range(1, nx+1):
+        x = (i-0.5) * dx
+        Q[i, 1, 3] = 0.25 * C * (1 + np.cos(4 * np.pi * (x - 0.5 * Lx))) * (1 + np.cos(3 * np.pi * 0.5 * Ly))
+        for j in range(2, ny+1):
+            y = (j-0.5) * dy
+            if y < Ly / 2:
+                Q[i, j, 0] = 1
+            else:
+                Q[i, j, 0] = 2
+            Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
+            Q[i, j, 3] = 0.25 * C * (1 + np.cos(4 * np.pi * (x - 0.5 * Lx))) * (1 + np.cos(3 * np.pi * (y - 0.5 * Ly)))
+     
+    if params[p_BC] == 'periodic':
+        periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_primitive=True)
+    
+    fig, ax = plt.subplots(1, 4, figsize=(15, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(Q[:, :, 0].T)
+    ax[1].pcolormesh(Q[:, :, 1].T)
+    ax[2].pcolormesh(Q[:, :, 2].T)
+    ax[3].pcolormesh(Q[:, :, 3].T)
+    ax[0].set_title("Densité")
+    ax[1].set_title("Pression")
+    ax[2].set_title("Vitesse x")
+    ax[3].set_title("Vitesse y")
+    ax[0].set_aspect('equal', adjustable='box')
+    ax[1].set_aspect('equal', adjustable='box')
+    ax[2].set_aspect('equal', adjustable='box')
+    ax[3].set_aspect('equal', adjustable='box')
+    plt.show()
+    
+    with h5py.File(params[p_in], 'w') as f:
+        f['data'] = primitive_into_conservative(Q, params)
         f.create_group('metadata')
         create_all_attribute(f['metadata'], params)
 

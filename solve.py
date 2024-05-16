@@ -7,12 +7,15 @@ import tqdm
 # Méthode des volumes finis
 
 @njit
-def compute_flux(U, i, j, params, axis):
+def compute_flux(U, i, j, params, axis, side):
     """Renvoie le flux à l'interface entre les case
     Si axis = 0: renvoie le flux à l'interface gauche de la case (i,j)
     Si axis = 1: renvoir le flux à l'interface basse de la case (i,j)
+    `side` permet de définir correctement l'influence du terme source
     On utilise le solveur de Riemann"""
     
+    m = 0 # Pour prendre en compte le terme source de masse
+
     if axis == 0: # Axe des abscisses
         i_prev = i-1
         j_prev = j
@@ -23,6 +26,10 @@ def compute_flux(U, i, j, params, axis):
         j_prev = j-1
         ul = get_speed_y(U[i_prev, j_prev])
         ur = get_speed_y(U[i, j])
+
+        # Terme source
+        dy = params[p_Ly] / params[p_ny]
+        m = dy * params[p_g] * (U[i_prev, j_prev, 0] + U[i, j, 0]) / 2
 
     pl = get_pressure(U[i_prev, j_prev], params)
     pr = get_pressure(U[i, j], params)
@@ -44,12 +51,13 @@ def compute_flux(U, i, j, params, axis):
     
     # Calcul du flux
     F = U_up * u_star
+    F[i_erg] += p_star * u_star
+    F[i_erg] += side * m * u_star / 2
     if axis == 0:
         F[i_momx] += p_star
-        F[i_erg] += p_star * u_star
     elif axis == 1:
         F[i_momy] += p_star
-        F[i_erg] += p_star * u_star
+        F[i_momy] += side * m / 2
     
     return F
 
@@ -58,7 +66,7 @@ def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
     for i in prange(1, nx+1):
         for j in prange(1, ny+1):             
-            U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0) - compute_flux(U_old, i, j, params, axis=0)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1) - compute_flux(U_old, i, j, params, axis=1))
+            U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0, side=1) - compute_flux(U_old, i, j, params, axis=0, side=-1)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1, side=1) - compute_flux(U_old, i, j, params, axis=1, side=-1))
 
 @njit(parallel=True)
 def compute_dt(U, nx, ny, dx, dy, params):
@@ -95,6 +103,7 @@ def solve(params):
     t = 0
     pbar = tqdm.tqdm(total=100)
     while t < params[p_T_end]:
+        
         dt = compute_dt(U_old, nx, ny, dx, dy, params)
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
@@ -102,15 +111,12 @@ def solve(params):
         inside_loop(U, U_old, dt, dx, dy, nx, ny, params)
         
         if params[p_BC] == 'neumann':
-            U[0, :, :] = U[1, :, :] 
-            U[nx+1, :, :] = U[nx, :, :]
-            U[:, 0, :] = U[:, 1, :]
-            U[:, ny+1, :] = U[:, ny, :]
+            neumann(U, nx, ny)
         elif params[p_BC] == 'periodic':
-            U[0, :, :] = U[nx, :, :]
-            U[nx + 1, :, :] = U[1, :, :]
-            U[:, 0, :] = U[:, ny, :]
-            U[:, ny+1, :] = U[:, 1, :]
+            periodic(U, nx, ny)
+        elif params[p_BC] == 'reflex':
+            neumann(U, nx, ny)
+            U = reflex(U, params)
 
         U_old = U.copy()
         t += dt

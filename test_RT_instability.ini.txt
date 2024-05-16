@@ -1,0 +1,13 @@
+Gamma: 1.4
+g: 0.1
+nx: 50
+ny: 150
+Lx: 0.5
+Ly: 1.5
+T end: 12.4
+CFL: 0.4
+BC: reflex
+freq out: 0.02
+name: Instabilite de Rayleigh-Taylor
+input name: rt_insta_2d
+output name: rt_insta_2d
