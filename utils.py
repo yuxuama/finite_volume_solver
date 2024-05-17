@@ -166,6 +166,7 @@ def conservative_into_primitive(U, params):
 
 # Boundary conditions
 
+@njit
 def neumann(U, nx, ny):
     """Modifie U pour qu'il vérifie les conditions aux limites de Neumann"""
     U[0, :, :] = U[1, :, :] 
@@ -173,6 +174,7 @@ def neumann(U, nx, ny):
     U[:, 0, :] = U[:, 1, :]
     U[:, ny+1, :] = U[:, ny, :]
 
+@njit
 def periodic(U, nx, ny):
     """Modifie U pour qu'il vérifie les conditions aux bords périodique """
     U[0, :, :] = U[nx, :, :]
@@ -203,7 +205,7 @@ def reflex(Q, params, is_primitive=False):
     Q[:, 0, j_speedy] = - Q[:, 1, j_speedy] # Vitesse selon y
     Q[:, ny+1, j_speedy] = - Q[:, ny, j_speedy]
     Q[:, 0, j_press] = Q[:, 1, j_press] + params[p_g] * dy * Q[:, 1, j_mass] # Pression (équilibre hydro)
-    Q[:, ny+1, j_press] = Q[:, ny, j_press] - params[p_g] * dy * Q[:, 1, j_mass]
+    Q[:, ny+1, j_press] = Q[:, ny, j_press] - params[p_g] * dy * Q[:, ny, j_mass]
 
     if not is_primitive:
         return primitive_into_conservative(Q, params)

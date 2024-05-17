@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 from utils import init_param, create_all_attribute, primitive_into_conservative, periodic, reflex, neumann
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
@@ -186,16 +187,23 @@ def hydrostatic(params):
     Lx = params[p_Lx]
     Ly = params[p_Ly]
     dy = Ly / ny
+    dx = Lx / nx
     p0 = 2.5
 
     # En utilisant les primitives (masse, pression, vitesse)
 
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
     Q[:, 1, 1] = p0 * np.ones((nx+2,))
-    Q[:, :, 0] = np.ones((nx+2, ny+2))
+    Q[:, 1, 0] = np.ones((nx+2,), dtype=float) * 0.1
     
     for i in range(1, nx+1):
         for j in range(2, ny+1):
+            x = (i - 0.5) * dx
+            y = (j - 0.5) * dy
+            if y < Ly / 2:
+                Q[i, j, 0] = 0.1
+            else:
+                Q[i, j, 0] = 0.2
             Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
      
     if params[p_BC] == 'periodic':

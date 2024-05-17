@@ -1,10 +1,10 @@
 Gamma: 1.4
 g: 0.1
-nx: 50
+nx: 100
 ny: 150
 Lx: 0.5
 Ly: 1.5
-T end: 3
+T end: 12.4
 CFL: 0.4
 BC: reflex
 freq out: 0.02

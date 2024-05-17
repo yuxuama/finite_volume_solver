@@ -170,13 +170,4 @@ def plot_density(filepath, ax=None, **kwargs):
 
 
 if __name__ == "__main__":
-    ax = plt.subplot(1, 3, 1)
-    plot_slice('./out/static_2d.h5', "u", 75, 0, ax=ax)
-    plot_slice('./out/static_2d.h5', "v", 25, 1, ax=ax)
-
-    ax = plt.subplot(1, 3, 2)
-    plot_density('./out/static_2d.h5', ax=ax)
-
-    ax = plt.subplot(1, 3, 3)
-    plot_slice('./out/static_2d.h5', 'rho', 25, 1, ax=ax)    
-    plt.show()
+    plot_density('./out/rt_insta_2d.h5')

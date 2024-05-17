@@ -34,15 +34,19 @@ def compute_flux(U, i, j, params, axis, side):
 
     pl = get_pressure(U[i_prev, j_prev], params)
     pr = get_pressure(U[i, j], params)
+    cl = get_sound_speed(U[i_prev, j_prev], params)
+    cr = get_sound_speed(U[i, j], params)
 
     # Paramètre de couplage vitesse pression
-    a = 1.1 * max(U[i_prev, j_prev, i_mass] * get_sound_speed(U[i_prev, j_prev], params), U[i, j, i_mass] * get_sound_speed(U[i, j], params))
+    a = 1.1 * max(U[i_prev, j_prev, i_mass] * cl, U[i, j, i_mass] * cr)
 
     # Vitese à l'interface
     u_star = 0.5 * (ul + ur - (pr - pl + m) / a)
 
     # Pression à l'interface
-    p_star = 0.5 * (pl + pr - a * (ur - ul))
+    Ma = u_star / min(cr, cl)
+    l_Ma_corr = min(Ma, 1) # Low Mach correction
+    p_star = 0.5 * (pl + pr - a * l_Ma_corr* (ur - ul))
 
     # Grandeur upwind
     if u_star >= 0:
