@@ -51,7 +51,7 @@ def sod_shock_tube(params, direction):
     elif params[p_BC] == 'neumann':
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_primitive=True)
+        reflex(Q, params, is_conservative=False)
 
     plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
     plt.show()
@@ -99,7 +99,7 @@ def riemann_problem_2d(params):
     elif params[p_BC] == 'neumann':
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_primitive=True)
+        reflex(Q, params, is_conservative=False)
     
     with h5py.File(params[p_in], 'w') as f:
         U = primitive_into_conservative(Q, params)
@@ -156,7 +156,7 @@ def rt_instability(params, C):
     elif params[p_BC] == 'neumann':
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_primitive=True)
+        reflex(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -211,7 +211,7 @@ def hydrostatic(params):
     elif params[p_BC] == 'neumann':
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_primitive=True)
+        reflex(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")

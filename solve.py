@@ -44,9 +44,9 @@ def compute_flux(U, i, j, params, axis, side):
     u_star = 0.5 * (ul + ur - (pr - pl + m) / a)
 
     # Pression à l'interface
-    Ma = u_star / min(cr, cl)
+    Ma = np.abs(u_star / min(cr, cl))
     l_Ma_corr = min(Ma, 1) # Low Mach correction
-    p_star = 0.5 * (pl + pr - a * l_Ma_corr* (ur - ul))
+    p_star = 0.5 * (pl + pr - a * l_Ma_corr * (ur - ul))
 
     # Grandeur upwind
     if u_star >= 0:

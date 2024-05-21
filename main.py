@@ -18,7 +18,7 @@ if __name__ == '__main__':
     mass_b= f["data"][1:params[2]+1,1:params[3]+1,0]
 
     diff = mass_a - mass_b
-    print(np.sum(diff))
+    print("Différence de masse avant-après:", np.sum(diff))
 
     #plt.plot(diff[25])
     #plt.show()

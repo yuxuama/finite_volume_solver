@@ -183,16 +183,18 @@ def periodic(U, nx, ny):
     U[:, ny+1, :] = U[:, 1, :]
 
 @njit
-def reflex(Q, params, is_primitive=False):
+def reflex(Q, params, is_conservative=True):
     """Modifie U pour que le tableaux vérifie les conditions réflexives
     Périodique selon les x
-    Blocage selon y (fermeture) vérifiant l'équilibre hydro"""
+    Blocage selon y (fermeture) vérifiant l'équilibre hydro
+    `is_conservative` permet de traiter le cas où la variable passée et le vecteur des grandeurs conservatives
+    """
     nx = params[p_nx]
     ny = params[p_ny]
     Ly = params[p_Ly]
     dy = Ly/ny
 
-    if not is_primitive:
+    if is_conservative:
         Q = conservative_into_primitive(Q, params)
     # Périodique selon les x
     Q[0, :, :] = Q[nx, :, :]
@@ -207,7 +209,7 @@ def reflex(Q, params, is_primitive=False):
     Q[:, 0, j_press] = Q[:, 1, j_press] + params[p_g] * dy * Q[:, 1, j_mass] # Pression (équilibre hydro)
     Q[:, ny+1, j_press] = Q[:, ny, j_press] - params[p_g] * dy * Q[:, ny, j_mass]
 
-    if not is_primitive:
+    if is_conservative:
         return primitive_into_conservative(Q, params)
 
 
