@@ -8,9 +8,6 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     params = init_param('test_convection.ini.txt')
-    #simple_convection(params, -50, 1, 300, 1e-5, 1, 0.5)
+    #simple_convection(params, -6, 1, 10, 1e-5, 1, 0.5)
     solve(params)
-
-    #plt.plot(diff[25])
-    #plt.show()
 

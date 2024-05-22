@@ -16,16 +16,8 @@ p_name = 9
 p_in = 10
 p_out = 11
 
-def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
-    """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
-    `ax` permet de plot sur une autre figure
-    """
-
-    if axis == 0:
-        axis = 'x'
-    elif axis == 1:
-        axis = 'y'
-
+def selecter(quantity):
+    """À partir de la quantité que l'on veut afficher détermine les bons labels et titres"""
     if quantity == 'rho':
         quantity = "rho"
         title = "Densité"
@@ -42,6 +34,20 @@ def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
         quantity = "pressure"
         title = "Pression"
         ylabel = "Pression ($Pa$)"
+    
+    return quantity, title, ylabel
+
+def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
+    """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
+    `ax` permet de plot sur une autre figure
+    """
+
+    if axis == 0:
+        axis = 'x'
+    elif axis == 1:
+        axis = 'y'
+
+    quantity, title, ylabel = selecter(quantity)
 
     # Load file
     f = h5py.File(filepath, 'r')
@@ -77,22 +83,7 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
     """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
     `a` et `b` paramétrisent la droite selon laquelle on veut faire une coupe
     """
-    if quantity == 'rho':
-        quantity = "rho"
-        title = "Densité"
-        ylabel = "Densité ($kg.m^{-3}$)"
-    elif quantity == 'u':
-        quantity = "speed x"
-        title = "Vitesse en horizontale"
-        ylabel = "Densité ($kg.m^{-3}$)"
-    elif quantity == 'v':
-        quantity = "speed y"
-        title = "Vitesse verticale"
-        ylabel = "Vitesse ($m.s$)"
-    elif quantity == 'p':
-        quantity = "pressure"
-        title = "Pression"
-        ylabel = "Pression ($Pa$)"
+    quantity, title, ylabel = selecter(quantity)
     
     # Load file
     f = h5py.File(filepath, 'r')
@@ -143,18 +134,7 @@ def plot_2d(filepath, quantity, ax=None, **kwargs):
     """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
 
-    if quantity == 'rho':
-        quantity = "rho"
-        title = "Densité"
-    elif quantity == 'u':
-        quantity = "speed x"
-        title = "Vitesse en horizontale"
-    elif quantity == 'v':
-        quantity = "speed y"
-        title = "Vitesse verticale"
-    elif quantity == 'p':
-        quantity = "pressure"
-        title = "Pression"
+    quantity, title, _ = selecter(quantity)
 
     f = h5py.File(filepath, 'r')
     dset_x = f['x'][:]
@@ -224,10 +204,11 @@ def plot_temperature(filepath, ax=None, **kwargs):
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(1, 3, figsize=(15, 4))
+    file = './out/simple_convection/convection simple_18.h5'
 
-    plot_2d('./out/simple_convection.h5', "rho", ax=ax[0])
-    plot_2d('./out/simple_convection.h5', "v", ax=ax[1])
-    plot_temperature('./out/simple_convection.h5', ax=ax[2])
+    plot_2d(file, "rho", ax=ax[0])
+    plot_2d(file, "v", ax=ax[1])
+    plot_temperature(file, ax=ax[2])
 
     plt.show()
     

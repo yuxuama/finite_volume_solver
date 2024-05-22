@@ -1,6 +1,7 @@
 from numba import njit, prange
 import numpy as np
 import h5py
+import os
 
 i_mass = 0 # Pour les tableaux de grandeurs conservatives
 i_momx = 1
@@ -40,7 +41,7 @@ param_struct = [  ("Gamma", float),
                 ("freq out", float),
                 ("name", str),
                 ("input name", str),
-                ("output name", str)
+                ("output dir", str)
 ]
 
 def init_param(filename):
@@ -62,7 +63,8 @@ def init_param(filename):
         
     assert params[p_BC] in ['neumann', 'periodic', 'reflex']
     params[p_in] = "./in/" + params[p_in] + '.h5'
-    params[p_out] = "./out/" + params[p_out] + '.h5'
+    params[p_out] = "./out/" + params[p_out] + '/'
+    os.makedirs(params[p_out], exist_ok=True)
     return tuple(params) # Pour que numba fonctionne (objet non modifiable)
 
 def create_all_attribute(dset, params):
@@ -80,7 +82,7 @@ def extract_parameter(dset):
         params[i] = dset.attrs.get(param_struct[i][0])
     return tuple(params)
 
-def save(U, params, filepath=None, masks=None):
+def save(U, params, filepath, masks=None):
     """Sauvegarde les données de U dans un fichier HDF5"""
 
     nx = params[p_nx]
@@ -91,10 +93,7 @@ def save(U, params, filepath=None, masks=None):
         mask_y = np.arange(1, ny+1) 
         mask_x, mask_y = np.meshgrid(mask_x, mask_y)
 
-    if filepath is not None:
-        f = h5py.File(filepath, "w")
-    else:
-        f =  h5py.File(params[p_out], "w")
+    f = h5py.File(filepath, "w")
     
     f["x"] = np.linspace(0, params[p_Lx], nx)
     f["y"] = np.linspace(0, params[p_Ly], ny)

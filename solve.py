@@ -107,7 +107,15 @@ def solve(params):
 
     t = 0
     pbar = tqdm.tqdm(total=100)
+    i = 1
+    total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_freq_out])))
     while t < params[p_T_end]:
+
+        if i * params[p_freq_out] <= t+dt:
+            n_zeros = int(np.floor(np.log10(i)))
+            save(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
+            i += 1
+            dt = (i-1) * params[p_freq_out] - t
         
         dt = compute_dt(U_old, nx, ny, dx, dy, params)
         if t+dt > params[p_T_end]:
@@ -124,12 +132,9 @@ def solve(params):
 
         U_old = U.copy()
         t += dt
+
         pbar.update(100*dt/ params[p_T_end])
     
-    pbar.close()
-
-    # Storage in output file
-    save(U, params)      
-    
+    pbar.close()    
     return
 

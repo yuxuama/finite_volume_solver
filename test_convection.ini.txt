@@ -1,14 +1,14 @@
 Gamma: 1.4
-g: 10
-cv: 50
-nx: 75
-ny: 75
+g: 1
+cv: 1
+nx: 100
+ny: 100
 Lx: 1
 Ly: 1
-T end: 5
+T end: 40
 CFL: 0.9
 BC: reflex
-freq out: 0.02
+freq out: 1
 name: Convection simple
 input name: simple_convection
-output name: simple_convection
+output dir: simple_convection
