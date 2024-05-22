@@ -14,20 +14,22 @@ j_speedy = 3
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
-p_nx = 2
-p_ny = 3
-p_Lx = 4
-p_Ly = 5
-p_T_end = 6
-p_CFL = 7
-p_BC = 8
-p_freq_out = 9
-p_name = 10
-p_in = 11
-p_out = 12
+p_cv = 2
+p_nx = 3
+p_ny = 4
+p_Lx = 5
+p_Ly = 6
+p_T_end = 7
+p_CFL = 8
+p_BC = 9
+p_freq_out = 10
+p_name = 11
+p_in = 12
+p_out = 13
 
 param_struct = [  ("Gamma", float),
                 ("g", float),
+                ("cv", float),
                 ("nx", int),
                 ("ny", int),
                 ("Lx", float),
@@ -39,7 +41,7 @@ param_struct = [  ("Gamma", float),
                 ("name", str),
                 ("input name", str),
                 ("output name", str)
-    ]
+]
 
 def init_param(filename):
     """Définit tous les paramètres de la simulation étant donné un fichier txt du bon format"""
@@ -133,6 +135,21 @@ def get_pressure(U, params):
     erg_kin = 0.5 * (U[i_momx] ** 2 / U[i_mass] + U[i_momy] ** 2 / U[i_mass])
     erg_intern = U[i_erg] - erg_kin
     return (params[p_gamma] - 1) * erg_intern
+
+@njit
+def get_pressure_from_temp(rho, T, params):
+    """Renvoie la pression calculé à partir de la température"""
+    return rho * params[p_cv] * T * (params[p_gamma] - 1)
+
+@njit
+def get_temp_from_pressure(press, rho, params):
+    """Renvoie la valeur de la température à partir de la pression donnée"""
+    return press / (rho * params[p_cv] * (params[p_gamma] - 1))
+
+@njit
+def get_temp(U, params):
+    """Renvoie la température pour un vecteur d'état de fluide U """
+    return get_temp_from_pressure(get_pressure(U, params), U[i_mass], params)
 
 @njit
 def get_sound_speed(U, params):

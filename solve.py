@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit, jit, prange
+from numba import njit, prange
 import h5py
 from utils import *
 import tqdm

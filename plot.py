@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from utils import extract_parameter
+from utils import extract_parameter, get_temp_from_pressure
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_nx = 1
@@ -139,9 +139,23 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
         ax.set_ylabel(ylabel)
         plt.show()
 
-def plot_density(filepath, ax=None, **kwargs):
-    """Renvoie la densite stockée dans le fichier `filepath` (format HDF5)"""
+def plot_2d(filepath, quantity, ax=None, **kwargs):
+    """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
+
+    if quantity == 'rho':
+        quantity = "rho"
+        title = "Densité"
+    elif quantity == 'u':
+        quantity = "speed x"
+        title = "Vitesse en horizontale"
+    elif quantity == 'v':
+        quantity = "speed y"
+        title = "Vitesse verticale"
+    elif quantity == 'p':
+        quantity = "pressure"
+        title = "Pression"
+
     f = h5py.File(filepath, 'r')
     dset_x = f['x'][:]
     dset_y = f['y'][:]
@@ -160,14 +174,60 @@ def plot_density(filepath, ax=None, **kwargs):
         plot = True
 
     ax.set_aspect('equal', adjustable='box')
-    ax.pcolormesh(xm, ym, f["rho"][:], **kwargs)
+    ax.pcolormesh(xm, ym, f[quantity][:], **kwargs)
 
     if plot:
-        ax.set_title("{0} (Densité) @ t = {1} s".format(name, T_end))
+        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, T_end))
+        ax.set_xlabel('$x$')
+        ax.set_ylabel('$y$')        
+        plt.show()
+
+def plot_temperature(filepath, ax=None, **kwargs):
+    """Plot la température issue des données stockées dans le fichier `filepath` (format HDF5)"""
+    # Load file
+    f = h5py.File(filepath, 'r')
+    dset_x = f['x'][:]
+    dset_y = f['y'][:]
+
+    xm, ym = np.meshgrid(dset_x, dset_y)
+
+    # Extracting info
+    name = f['metadata'].attrs.get("name")
+    T_end = f["metadata"].attrs.get("T end")
+    params = extract_parameter(f['metadata'])
+
+    # Extracting temperature
+    nx = dset_x.size
+    ny = dset_y.size
+    temp = np.zeros((nx, ny))
+
+    for i in range(nx):
+        for j in range(ny):
+            temp[i, j] = get_temp_from_pressure(f['pressure'][i, j], f['rho'][i, j], params)
+
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
+
+    ax.set_aspect('equal', adjustable='box')
+    ax.pcolormesh(xm, ym, temp, cmap='hot', **kwargs)
+
+    if plot:
+        ax.set_title("{0} (Temperature) @ t = {1} s".format(name, T_end))
         ax.set_xlabel('$x$')
         ax.set_ylabel('$y$')        
         plt.show()
 
 
 if __name__ == "__main__":
-    plot_density('./out/rt_insta_2d.h5')
+    fig, ax = plt.subplots(1, 3, figsize=(15, 4))
+
+    plot_2d('./out/simple_convection.h5', "rho", ax=ax[0])
+    plot_2d('./out/simple_convection.h5', "v", ax=ax[1])
+    plot_temperature('./out/simple_convection.h5', ax=ax[2])
+
+    plt.show()
+    

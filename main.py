@@ -1,24 +1,15 @@
 from utils import init_param
 from solve import solve
-from in_file_maker import sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic
-from plot import plot_density, plot_slice
+from in_file_maker import sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection
+from plot import plot_2d, plot_slice
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
-    params = init_param('test_RT_instability.ini.txt')
-    rt_instability(params, 0.01)
+    params = init_param('test_convection.ini.txt')
+    #simple_convection(params, -50, 1, 300, 1e-5, 1, 0.5)
     solve(params)
-    
-    f = h5py.File(params[-1])
-    mass_a = f["rho"][:].T
-
-    f = h5py.File(params[-2])
-    mass_b= f["data"][1:params[2]+1,1:params[3]+1,0]
-
-    diff = mass_a - mass_b
-    print("Différence de masse avant-après:", np.sum(diff))
 
     #plt.plot(diff[25])
     #plt.show()

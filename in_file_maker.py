@@ -1,22 +1,23 @@
 import numpy as np
 import h5py
-from utils import init_param, create_all_attribute, primitive_into_conservative, periodic, reflex, neumann
+from utils import init_param, create_all_attribute, primitive_into_conservative, periodic, reflex, neumann, get_pressure_from_temp
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
-p_nx = 2
-p_ny = 3
-p_Lx = 4
-p_Ly = 5
-p_T_end = 6
-p_CFL = 7
-p_BC = 8
-p_freq_out = 9
-p_name = 10
-p_in = 11
-p_out = 12
+p_cv = 2
+p_nx = 3
+p_ny = 4
+p_Lx = 5
+p_Ly = 6
+p_T_end = 7
+p_CFL = 8
+p_BC = 9
+p_freq_out = 10
+p_name = 11
+p_in = 12
+p_out = 13
 
 
 def sod_shock_tube(params, direction):
@@ -233,6 +234,77 @@ def hydrostatic(params):
         f['data'] = primitive_into_conservative(Q, params)
         f.create_group('metadata')
         create_all_attribute(f['metadata'], params)
+
+def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
+    """Calcul la condition initiale pour un problème de convection basique
+    `gradT` fixe le gradient de température vertical
+    `rho_grd` fixe la valeur de la densité en bas de la boîte
+    `T_grf` fixe la valeur de la température en bas de la boîte
+    `C` est l'amplitude de la perturbation appliquée
+    `kx` est la fréquence spatiale selon x normalisée
+    `ky` est la fréquence spatiale selon y normalisée    
+    """
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Lx = params[p_Lx]
+    Ly = params[p_Ly]
+    dy = Ly / ny
+    dx = Lx / nx
+
+    # Température en fonction de l'altitude (les valeurs aux bords sont aberrantes)
+    T = np.ones((ny+2,)) * T_grd - gradT * dy
+    for i in range(1, ny+2):
+        T[i] = T[i-1] + gradT * dy
+
+    # En utilisant les primitives (masse, pression, vitesse)
+
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 0] = rho_grd * np.ones((nx+2)) # Masse tout en bas
+    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[1], params) * np.ones((nx+2)) # Pression tout en bas
+
+    a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
+
+    for i in range(1, nx+1):
+        for j in range(2, ny+1):
+            x = (i-0.5) * dx
+            y = (j-0.5) * dy
+            Q[i, j, 3] = C * np.sin(2 * np.pi * kx * x / Lx) * np.sin(2 * np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
+
+            Q[i, j, 0] = Q[i, j-1, 0] * (T[j-1] * a - 1) / (1 + T[j] * a)
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[j], params) 
+
+    if params[p_BC] == 'periodic':
+        periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_conservative=False)
+
+    fig, ax = plt.subplots(1, 5, figsize=(17, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(Q[:, :, 0].T)
+    ax[1].pcolormesh(Q[:, :, 1].T)
+    ax[2].pcolormesh(Q[:, :, 2].T)
+    ax[3].pcolormesh(Q[:, :, 3].T)
+    ax[4].plot(T, np.linspace(-dy, Lx+dy, nx+2))
+    ax[0].set_title("Densité")
+    ax[1].set_title("Pression")
+    ax[2].set_title("Vitesse x")
+    ax[3].set_title("Vitesse y")
+    ax[4].set_title("Profil de température")
+    ax[4].set(xlabel='Température', ylabel='$y$')
+    ax[0].set_aspect('equal', adjustable='box')
+    ax[1].set_aspect('equal', adjustable='box')
+    ax[2].set_aspect('equal', adjustable='box')
+    ax[3].set_aspect('equal', adjustable='box')
+    plt.show()
+    
+    with h5py.File(params[p_in], 'w') as f:
+        f['data'] = primitive_into_conservative(Q, params)
+        f.create_group('metadata')
+        create_all_attribute(f['metadata'], params)
+
+
 
 # Depreciated
 def two_rarefaction(params):

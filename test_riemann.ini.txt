@@ -1,5 +1,7 @@
 Gamma: 1.4
 g: 0.0
+cv: 1
+mu: 1
 nx: 150
 ny: 150
 Lx: 1
