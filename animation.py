@@ -29,6 +29,7 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200):
     quantity, title, _ = selecter(quantity)
 
     files = [dirpath + f for f in os.listdir(dirpath)]
+    files.sort()
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
 
@@ -47,7 +48,6 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200):
 
     def animate(frame): 
         data = h5py.File(files[frame], 'r')[quantity][:]
-        print(files[frame])
         mesh.set_array(data)
         return mesh,
     
@@ -55,5 +55,5 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200):
     return ani
 
 if __name__ == '__main__':
-    ani = animate_quantity('./out/simple_convection/', "rho", 40)
+    ani = animate_quantity('./out/simple_convection/', "v", 40)
     plt.show()

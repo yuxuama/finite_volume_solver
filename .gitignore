@@ -1,6 +1,8 @@
 in/*
 out/*
-__pycache__/*
-!in
-!out
+__pycache__
 *.ipynb
+venv
+*.cfg
+.vscode
+anim/*

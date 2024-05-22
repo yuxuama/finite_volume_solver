@@ -111,13 +111,14 @@ def solve(params):
     total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_freq_out])))
     while t < params[p_T_end]:
 
+        dt = compute_dt(U_old, nx, ny, dx, dy, params)
+
         if i * params[p_freq_out] <= t+dt:
             n_zeros = int(np.floor(np.log10(i)))
             save(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
             i += 1
             dt = (i-1) * params[p_freq_out] - t
         
-        dt = compute_dt(U_old, nx, ny, dx, dy, params)
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
