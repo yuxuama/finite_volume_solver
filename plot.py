@@ -209,14 +209,29 @@ def plot_temperature(filepath, ax=None, **kwargs):
         ax.set_ylabel('$y$')        
         plt.show()
 
+def plot_energy(filepath, **kwargs):
+    """Trace les diagrammes d'énergie"""
+    f = h5py.File(filepath, 'r')
 
-if __name__ == "__main__":
-    fig, ax = plt.subplots(1, 3, figsize=(15, 4))
-    file = './out/simple_convection/convection simple_18.h5'
+    time = f['time'][:]
+    ekin_x = f['ekin x'][:]
+    ekin_y = f['ekin y'][:]
 
-    plot_2d(file, "rho", ax=ax[0])
-    plot_2d(file, "v", ax=ax[1])
-    plot_temperature(file, ax=ax[2])
+    name = f['metadata'].attrs.get("name")
+    T_end = f["metadata"].attrs.get("T end")
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    fig.suptitle("{0} | évolution sur {1} s".format(name, T_end))
+    
+    ax[0].semilogy(time, ekin_x)
+    ax[0].set(title="Evolution de l'énergie cinétique selon x", xlabel="$t$ (s)", ylabel="Energie (J)")
+    ax[1].semilogy(time, ekin_y)
+    ax[1].set(title="Evolution de l'énergie cinétique selon y", xlabel="$t$ (s)", ylabel="Energie (J)")
 
     plt.show()
+
+if __name__ == "__main__":
+    file = './out/simple_convection/energies.h5'
+    plot_energy(file)
+
     

@@ -82,7 +82,7 @@ def extract_parameter(dset):
         params[i] = dset.attrs.get(param_struct[i][0])
     return tuple(params)
 
-def save(U, params, filepath, masks=None):
+def save_u(U, params, filepath, masks=None):
     """Sauvegarde les données de U dans un fichier HDF5"""
 
     nx = params[p_nx]
@@ -109,6 +109,21 @@ def save(U, params, filepath, masks=None):
     f["pressure"] = Q[mask_x, mask_y, j_press]
     f["speed x"] = Q[mask_x, mask_y, j_speedx]       
     f["speed y"] = Q[mask_x, mask_y, j_speedy] 
+
+def save(filepath, data, params, label=None):
+    """Sauvegarde chaque élément du tuple `data` dans un fichier HDF5
+    `data` doit être un tuple de `np.ndarray`
+    Si `label` n'est pas `None` alors ce doit être un tuple de même taille que `data` 
+    """
+    f = h5py.File(filepath, 'w')
+
+    if label is None:
+        label = np.arange(len(data))
+    for i in range(len(data)):
+        f[label[i]] = data[i]
+    
+    f.create_group("metadata")
+    create_all_attribute(f['metadata'], params)
 
 # Conservatives and primitives utils
 

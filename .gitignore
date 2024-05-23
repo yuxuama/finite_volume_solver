@@ -3,6 +3,6 @@ out/*
 __pycache__
 *.ipynb
 venv
-*.cfg
 .vscode
 anim/*
+token.txt

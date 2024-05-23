@@ -268,7 +268,7 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
         for j in range(2, ny+1):
             x = (i-0.5) * dx
             y = (j-0.5) * dy
-            #Q[i, j, 3] = C * np.sin(2 * np.pi * kx * x / Lx) * np.sin(2 * np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
+            Q[i, j, 3] = C * np.sin(2 * np.pi * kx * x / Lx) * np.sin(2 * np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
 
             Q[i, j, 0] = Q[i, j-1, 0] * (T[j-1] * a - 1) / (1 + T[j] * a)
             Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[j], params) 

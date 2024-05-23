@@ -67,7 +67,7 @@ def compute_flux(U, i, j, params, axis, side):
     return F
 
 @njit(parallel=True)
-def inside_loop(U, U_old, dt, dx, dy, nx, ny, params):
+def apply_flux(U, U_old, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
     for i in prange(1, nx+1):
         for j in prange(1, ny+1):             
@@ -85,9 +85,7 @@ def compute_dt(U, nx, ny, dx, dy, params):
     return dt
 
 def solve(params):
-    """Résout le problème du tube de Sod grâce à la méthode des volumes finis sur un temps `T_end`
-    en utilisant les conditions initiales données par U_i
-    Enregistre les états du système avec une fréquence de `freq_io`"""
+    """Applique la méthode des volumes finis pour le problème défini par les paramètres `params`"""
     
     nx = params[p_nx]
     ny = params[p_ny]
@@ -105,25 +103,42 @@ def solve(params):
 
     # Calcul de l'évolution
 
-    t = 0
-    pbar = tqdm.tqdm(total=100)
+    t = 0 # Temps de la simulation
+    pbar = tqdm.tqdm(total=100) # Progress bar
+
+    # Paramètres pour les sorties
     i = 1
     total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_freq_out])))
+    time = []
+    ekin_x = []
+    ekin_y = []
+
     while t < params[p_T_end]:
 
         dt = compute_dt(U_old, nx, ny, dx, dy, params)
 
         if i * params[p_freq_out] <= t+dt:
             n_zeros = int(np.floor(np.log10(i)))
-            save(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
+            save_u(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
             i += 1
             dt = (i-1) * params[p_freq_out] - t
+
+            # Calcul in-situ des énergies cinétiques
+            time.append(t)
+            ekinx = U_old[:, :, i_momx] ** 2 / U_old[:, :, i_mass]
+            ekin_x.append(np.sum(ekinx))
+            ekiny = U_old[:, :, i_momy] ** 2 / U_old[:, :, i_mass]
+            ekin_y.append(np.sum(ekiny))
         
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
-        inside_loop(U, U_old, dt, dx, dy, nx, ny, params)
+
+        # Change linked to flux
+        apply_flux(U, U_old, dt, dx, dy, nx, ny, params)
         
+        # TODO: Change linked to temperature source
+
         if params[p_BC] == 'neumann':
             neumann(U, nx, ny)
         elif params[p_BC] == 'periodic':
@@ -137,5 +152,10 @@ def solve(params):
         pbar.update(100*dt/ params[p_T_end])
     
     pbar.close()    
-    return
+    
+    time = np.array(time)
+    ekin_x = np.array(ekin_x)
+    ekin_y = np.array(ekin_y)
 
+    labels = ('time', 'ekin x', 'ekin y')
+    save(params[p_out] + "energies.h5", (time, ekin_x, ekin_y), params, labels)
