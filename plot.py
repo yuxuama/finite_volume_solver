@@ -34,6 +34,14 @@ def selecter(quantity):
         quantity = "pressure"
         title = "Pression"
         ylabel = "Pression ($Pa$)"
+    elif quantity == 'mx':
+        quantity = "momentum x"
+        title = "Quantité de mouvement selon x"
+        ylabel = "Impulsion x"
+    elif quantity == "my":
+        quantity = "momentum y"
+        title = "Quantité de mouvement selon y"
+        ylabel = "Impulsion y"
     
     return quantity, title, ylabel
 

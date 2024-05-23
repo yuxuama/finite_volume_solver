@@ -108,7 +108,7 @@ def save(U, params, filepath, masks=None):
 
     f["pressure"] = Q[mask_x, mask_y, j_press]
     f["speed x"] = Q[mask_x, mask_y, j_speedx]       
-    f["speed y"] = Q[mask_x, mask_y, j_speedx] 
+    f["speed y"] = Q[mask_x, mask_y, j_speedy] 
 
 # Conservatives and primitives utils
 
