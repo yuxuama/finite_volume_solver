@@ -1,6 +1,6 @@
 Gamma: 1.4
 g: 1
-ht: 0
+ht: -1
 cv: 1
 nx: 100
 ny: 100
@@ -10,6 +10,6 @@ T end: 40
 CFL: 0.9
 BC: reflex
 freq out: 1
-name: Convection simple
-input name: simple_convection
-output dir: simple_convection
+name: Convection forcee
+input name: forced_convection
+output dir: forced_convection

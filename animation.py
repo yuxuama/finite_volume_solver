@@ -9,18 +9,19 @@ import os
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
-p_cv = 2
-p_nx = 3
-p_ny = 4
-p_Lx = 5
-p_Ly = 6
-p_T_end = 7
-p_CFL = 8
-p_BC = 9
-p_freq_out = 10
-p_name = 11
-p_in = 12
-p_out = 13
+p_ht = 2
+p_cv = 3
+p_nx = 4
+p_ny = 5
+p_Lx = 6
+p_Ly = 7
+p_T_end = 8
+p_CFL = 9
+p_BC = 10
+p_freq_out = 11
+p_name = 12
+p_in = 13
+p_out = 14
 
 def get_normalize_cmap(file_list, quantity, ratio):
     """Renvoie une normalisation globale pour la colormap
@@ -68,14 +69,14 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
         norm = get_normalize_cmap(files, quantity, ratio)
 
     fig, ax = plt.subplots(1, 1)
-    mesh = ax.pcolormesh(x, y, h5py.File(files[0], 'r')[quantity][:], norm=norm, **kwargs)
+    mesh = ax.pcolormesh(x, y, h5py.File(files[1], 'r')[quantity][:], norm=norm, **kwargs)
     ax.set(title=f"{title} sur {T_end} s @ f_io = {freq} Hz",
            xlabel="$x$",
            ylabel="$y$"
     )
 
     def animate(frame): 
-        data = h5py.File(files[frame], 'r')[quantity][:]
+        data = h5py.File(files[frame+1], 'r')[quantity][:]
         mesh.set_array(data)
         return mesh,
     
@@ -83,5 +84,5 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
     return ani
 
 if __name__ == '__main__':
-    ani = animate_quantity('./out/simple_convection/', "my", 40, cmap='coolwarm', shading='auto')
+    ani = animate_quantity('./out/forced_convection/', "u", 40, cmap='coolwarm', shading='auto')
     plt.show()

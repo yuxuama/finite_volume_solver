@@ -15,21 +15,23 @@ j_speedy = 3
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
-p_cv = 2
-p_nx = 3
-p_ny = 4
-p_Lx = 5
-p_Ly = 6
-p_T_end = 7
-p_CFL = 8
-p_BC = 9
-p_freq_out = 10
-p_name = 11
-p_in = 12
-p_out = 13
+p_ht = 2
+p_cv = 3
+p_nx = 4
+p_ny = 5
+p_Lx = 6
+p_Ly = 7
+p_T_end = 8
+p_CFL = 9
+p_BC = 10
+p_freq_out = 11
+p_name = 12
+p_in = 13
+p_out = 14
 
 param_struct = [  ("Gamma", float),
                 ("g", float),
+                ("ht", float),
                 ("cv", float),
                 ("nx", int),
                 ("ny", int),
@@ -163,7 +165,7 @@ def get_temp_from_pressure(press, rho, params):
 @njit
 def get_temp(U, params):
     """Renvoie la température pour un vecteur d'état de fluide U """
-    return get_temp_from_pressure(get_pressure(U, params), U[i_mass], params)
+    return get_pressure(U, params) / (U[i_mass] * params[p_cv] * (params[p_gamma] - 1))
 
 @njit
 def get_sound_speed(U, params):

@@ -67,11 +67,18 @@ def compute_flux(U, i, j, params, axis, side):
     return F
 
 @njit(parallel=True)
-def apply_flux(U, U_old, dt, dx, dy, nx, ny, params):
+def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
     """Relation de récurrence entre les vecteurs U"""
+    a = params[p_gamma] * params[p_ht] * dt
     for i in prange(1, nx+1):
-        for j in prange(1, ny+1):             
+        for j in prange(1, ny+1):
+            # On applique le transport             
             U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0, side=1) - compute_flux(U_old, i, j, params, axis=0, side=-1)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1, side=1) - compute_flux(U_old, i, j, params, axis=1, side=-1))
+
+            # On applique les termes sources de chaleur
+            Told = get_temp(U[i, j], params)
+            Tnew = (Told - T0[j]*a) / (1 - a)
+            U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * (Tnew - Told)   
 
 @njit(parallel=True)
 def compute_dt(U, nx, ny, dx, dy, params):
@@ -82,10 +89,13 @@ def compute_dt(U, nx, ny, dx, dy, params):
             speed_info = np.abs(get_speed(U[i, j])) + get_sound_speed(U[i, j], params)
             dt_loc = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
             dt = min(dt, dt_loc)
-    return dt
-
+    return dt             
+        
 def solve(params):
-    """Applique la méthode des volumes finis pour le problème défini par les paramètres `params`"""
+    """Applique la méthode des volumes finis pour le problème défini par les paramètres `params`
+    Sauvegarde l'évolution à la fréquence fixée dans les paramètres
+    Sauvegarde en calculant *in situ* les énergies cinétiques
+    """
     
     nx = params[p_nx]
     ny = params[p_ny]
@@ -96,6 +106,8 @@ def solve(params):
 
     U_old = f['data'][:]
     U = np.ones_like(U_old)
+
+    T0 = f['temperature'][:]
 
     # Discretisation de l'espace
     dx = params[p_Lx] / nx
@@ -133,11 +145,9 @@ def solve(params):
         if t+dt > params[p_T_end]:
             dt = params[p_T_end] - t
 
-
-        # Change linked to flux
-        apply_flux(U, U_old, dt, dx, dy, nx, ny, params)
+        # Updating U
+        inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params)
         
-        # TODO: Change linked to temperature source
 
         if params[p_BC] == 'neumann':
             neumann(U, nx, ny)

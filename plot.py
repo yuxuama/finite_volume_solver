@@ -231,7 +231,7 @@ def plot_energy(filepath, **kwargs):
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/simple_convection/energies.h5'
+    file = './out/forced_convection/energies.h5'
     plot_energy(file)
 
     

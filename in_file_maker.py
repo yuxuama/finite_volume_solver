@@ -1,24 +1,8 @@
 import numpy as np
 import h5py
-from utils import init_param, create_all_attribute, primitive_into_conservative, periodic, reflex, neumann, get_pressure_from_temp
+from utils import *
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-
-p_gamma = 0 # Pour les tableaux de grandeurs primitives
-p_g = 1
-p_cv = 2
-p_nx = 3
-p_ny = 4
-p_Lx = 5
-p_Ly = 6
-p_T_end = 7
-p_CFL = 8
-p_BC = 9
-p_freq_out = 10
-p_name = 11
-p_in = 12
-p_out = 13
-
 
 def sod_shock_tube(params, direction):
     """ Créer le fichier de condition initiale pour les paramètres donnés
@@ -299,10 +283,9 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    with h5py.File(params[p_in], 'w') as f:
-        f['data'] = primitive_into_conservative(Q, params)
-        f.create_group('metadata')
-        create_all_attribute(f['metadata'], params)
+    U = primitive_into_conservative(Q, params)
+    labels = ('data', 'temperature')
+    save(params[p_in], (U, T), params, labels)
 
 # Depreciated
 def two_rarefaction(params):

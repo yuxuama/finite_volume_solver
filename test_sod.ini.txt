@@ -1,5 +1,6 @@
 Gamma: 1.4
 g: 0.0
+ht: 0
 cv: 1
 mu: 1
 nx: 100
