@@ -79,6 +79,9 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
     def animate(frame): 
         data = h5py.File(files[frame+1], 'r')[quantity][:]
         mesh.set_array(data)
+        mesh.set_norm(Normalize(vmin=np.min(data), vmax=np.max(data)))
+        if frame == frames-1:
+            print("Animation terminée")
         return mesh,
     
     ani = FuncAnimation(fig, animate, frames=frames, interval=rest_time, blit=True, repeat=False)
@@ -128,5 +131,5 @@ def animate_temperature(dirpath, frames, rest_time=200, **kwargs):
     return ani
 
 if __name__ == '__main__':
-    ani = animate_temperature('./out/simple_diffusion/', 20, cmap='coolwarm', shading='auto')
+    ani = animate_quantity('./out/simple_diffusion/', 'v', 30, rest_time=100, cmap='coolwarm', shading='auto')
     plt.show()

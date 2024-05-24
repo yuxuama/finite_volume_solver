@@ -230,11 +230,11 @@ def plot_energy(filepath, **kwargs):
     ax.semilogy(time, ekin_x, '--b', label="selon x")
     ax.semilogy(time, ekin_y, 'b', label="selon y")
     ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
-
+    ax.legend()
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/forced_convection/energies.h5'
+    file = './out/simple_diffusion/energies.h5'
     plot_energy(file)
 
     

@@ -1,13 +1,13 @@
 Gamma: 1.4
 g: 1
-ht: -1
+ht: -0.1
 k: 0
 cv: 1
 nx: 100
 ny: 100
 Lx: 1
 Ly: 1
-T end: 40
+T end: 100
 CFL: 0.9
 BC: reflex
 freq out: 1

@@ -219,7 +219,7 @@ def hydrostatic(params):
         f.create_group('metadata')
         create_all_attribute(f['metadata'], params)
 
-def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
+def simple_convection(params, gradT, T_grd, rho_grd, C, kx, ky):
     """Calcul la condition initiale pour un problème de convection basique
     `gradT` fixe le gradient de température vertical
     `rho_grd` fixe la valeur de la densité en bas de la boîte
@@ -236,15 +236,15 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
     dx = Lx / nx
 
     # Température en fonction de l'altitude (les valeurs aux bords sont aberrantes)
-    T = np.ones((ny+2,)) * T_grd - gradT * dy
-    for i in range(1, ny+2):
-        T[i] = T[i-1] + gradT * dy
+    T = np.ones((nx+2, ny+2)) * T_grd - gradT * dy
+    for j in range(1, ny+2):
+        T[:, j] = T[:, j-1] + gradT * dy
 
     # En utilisant les primitives (masse, pression, vitesse)
 
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
-    Q[:, 1, 0] = rho_grd * np.ones((nx+2)) # Masse tout en bas
-    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[1], params) * np.ones((nx+2)) # Pression tout en bas
+    Q[:, 1, 0] = rho_grd # Masse tout en bas
+    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params) # Pression tout en bas
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
 
@@ -252,10 +252,10 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
         for j in range(2, ny+1):
             x = (i-0.5) * dx
             y = (j-0.5) * dy
-            Q[i, j, 3] = C * np.sin(2 * np.pi * kx * x / Lx) * np.sin(2 * np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
+            Q[i, j, 3] = C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
 
-            Q[i, j, 0] = Q[i, j-1, 0] * (T[j-1] * a - 1) / (1 + T[j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[j], params) 
+            Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params) 
 
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
@@ -300,10 +300,15 @@ def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
     Lx = params[p_Lx]
     Ly = params[p_Ly]
     dy = Ly / ny
+    dx = Lx / nx
 
     # Encode les températures aux bords
     T = np.ones((nx+2, ny+2), dtype=float) * 0.5 * (Tdown + Tup)
-    T[:, 0] = Tdown + C * np.cos(np.arange(0, k * np.pi, nx+2))
+    for i in range(nx+2):
+        if i < (nx+2)/2:
+            T[i, 0] = Tdown 
+        else:
+            T[i, 0] = Tdown + C
     T[:, ny+1] = Tup
 
     # En utilisant les primitives (masse, pression, vitesse)
@@ -317,8 +322,11 @@ def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
 
     for i in range(1, nx+1):
         for j in range(2, ny+1):
+            x = (i-0.5) * dx
+            y = (j-0.5) * dy
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params) 
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+            Q[i, j, 3] = 0.001 * np.sin(np.pi * 2 * x / Lx) * np.sin(np.pi * 1 * y / Ly)
      
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
