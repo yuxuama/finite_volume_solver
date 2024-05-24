@@ -85,10 +85,10 @@ def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
             # On applique les termes sources de chaleur
             # Diffusion thermique
             Told = get_temp(U_old[i, j], params)
-            Tdiff = (get_temp(U_old[i+1, j], params) +  get_temp(U_old[i-1, j], params) - 2 * Told) / (dx*dx)
-            Tdiff += (t(U_old, i, j+1, ny, T0, params) + t(U_old, i, j-1, ny, T0, params) + 2 * Told) / (dy*dy)
-            Tdiff *= 0.5 * params[p_k] * dt
-            U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * Tdiff
+            Ediff = (get_temp(U_old[i+1, j], params) +  get_temp(U_old[i-1, j], params) - 2 * Told) / (dx*dx)
+            Ediff += (t(U_old, i, j+1, ny, T0, params) + t(U_old, i, j-1, ny, T0, params) - 2 * Told) / (dy*dy)
+            Ediff *= 0.5 * params[p_k] * dt
+            U[i, j, i_erg] = U[i, j, i_erg] + Ediff
             
             # Rappel thermique (buoyancy)
             Told = get_temp(U[i, j], params)
@@ -99,14 +99,14 @@ def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
 @njit(parallel=True)
 def compute_dt(U, nx, ny, dx, dy, params):
     """Calcule le pas de temps pour la simulation"""
-    dt = params[p_T_end] + 2
+    dt = params[p_T_end] + 2 # Il ne pourra pas être plus grand car on le clamp à Tend (dans la boucle principale)
     for i in prange(1, nx + 1):
         for j in prange(1, ny+1):
             speed_info = np.abs(get_speed(U[i, j])) + get_sound_speed(U[i, j], params)
             dt_loc_ad = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
             dt_loc_diff = (params[p_CFL] / params[p_k]) * 1. / (1./(dx**2) + 1./(dy**2))
-            dt = min(dt, dt_loc_ad)
-            dt = min(dt, dt_loc_diff)
+            dt_loc = min(dt_loc_diff, dt_loc_ad)
+            dt = min(dt, dt_loc)
     return dt             
         
 def solve(params):

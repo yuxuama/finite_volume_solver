@@ -7,10 +7,10 @@ nx: 50
 ny: 50
 Lx: 1
 Ly: 1
-T end: 1e-4
+T end: 10
 CFL: 0.9
 BC: reflex
-freq out: 1e-5
+freq out: 0.05
 name: Diffusion simple
 input name: simple_diffusion
 output dir: simple_diffusion

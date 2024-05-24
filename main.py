@@ -8,8 +8,3 @@ if __name__ == '__main__':
     simple_diffusion(params, 10, 3)
     solve(params)
 
-
-
-
-
-

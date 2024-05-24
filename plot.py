@@ -224,13 +224,12 @@ def plot_energy(filepath, **kwargs):
     name = f['metadata'].attrs.get("name")
     T_end = f["metadata"].attrs.get("T end")
 
-    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    fig, ax = plt.subplots(1, 1)
     fig.suptitle("{0} | évolution sur {1} s".format(name, T_end))
     
-    ax[0].semilogy(time, ekin_x)
-    ax[0].set(title="Evolution de l'énergie cinétique selon x", xlabel="$t$ (s)", ylabel="Energie (J)")
-    ax[1].semilogy(time, ekin_y)
-    ax[1].set(title="Evolution de l'énergie cinétique selon y", xlabel="$t$ (s)", ylabel="Energie (J)")
+    ax.semilogy(time, ekin_x, '--b', label="selon x")
+    ax.semilogy(time, ekin_y, 'b', label="selon y")
+    ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
 
     plt.show()
 
