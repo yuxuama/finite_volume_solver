@@ -287,6 +287,49 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
     labels = ('data', 'temperature')
     save(params[p_in], (U, T), params, labels)
 
+def simple_diffusion(params, Tdown, Tup, p0=2.5):
+    """Donne les conditions initiales d'un problème de diffusion basique:
+    équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
+    Pas de perturbation
+    `Tdown` fixe la température en bas
+    `Tup` fixe la température en haut
+    `p0` fixe la pression en bas de la boîte
+    """
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Lx = params[p_Lx]
+    Ly = params[p_Ly]
+    dy = Ly / ny
+
+    # Encode les températures aux bords
+    T = np.ones(ny+2, dtype=float) * 0.5 * (Tdown + Tup)
+    T[0] = Tdown
+    T[-1] = Tup
+
+    # En utilisant les primitives (masse, pression, vitesse)
+    # Encode l'équilibre hydrostatique
+
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 1] = p0 * np.ones((nx+2,))
+    Q[:, 1, 0] = np.ones((nx+2,), dtype=float)
+    
+    for i in range(1, nx+1):
+        for j in range(2, ny+1):
+            Q[i, j, 0] = 1.
+            Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
+     
+    if params[p_BC] == 'periodic':
+        periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_conservative=False)
+    
+    U = primitive_into_conservative(Q, params)
+    labels = ('data', 'temperature')
+    save(params[p_in], (U, T), params, labels)
+
+
 # Depreciated
 def two_rarefaction(params):
     """Créer le fichier de condition initiale pour les paramètres donnés

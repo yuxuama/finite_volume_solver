@@ -10,18 +10,19 @@ import os
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
 p_ht = 2
-p_cv = 3
-p_nx = 4
-p_ny = 5
-p_Lx = 6
-p_Ly = 7
-p_T_end = 8
-p_CFL = 9
-p_BC = 10
-p_freq_out = 11
-p_name = 12
-p_in = 13
-p_out = 14
+p_k = 3
+p_cv = 4
+p_nx = 5
+p_ny = 6
+p_Lx = 7
+p_Ly = 8
+p_T_end = 9
+p_CFL = 10
+p_BC = 11
+p_freq_out = 12
+p_name = 13
+p_in = 14
+p_out = 15
 
 def get_normalize_cmap(file_list, quantity, ratio):
     """Renvoie une normalisation globale pour la colormap
@@ -84,5 +85,5 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
     return ani
 
 if __name__ == '__main__':
-    ani = animate_quantity('./out/forced_convection/', "u", 40, cmap='coolwarm', shading='auto')
+    ani = animate_quantity('./out/simple_diffusion/', "rho", 10, cmap='coolwarm', shading='auto')
     plt.show()

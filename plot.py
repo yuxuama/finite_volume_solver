@@ -4,17 +4,21 @@ import h5py
 from utils import extract_parameter, get_temp_from_pressure
 
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
-p_nx = 1
-p_ny = 2
-p_Lx = 3
-p_Ly = 4
-p_T_end = 5
-p_CFL = 6
-p_BC = 7
-p_freq_out = 8
-p_name = 9
-p_in = 10
-p_out = 11
+p_g = 1
+p_ht = 2
+p_k = 3
+p_cv = 4
+p_nx = 5
+p_ny = 6
+p_Lx = 7
+p_Ly = 8
+p_T_end = 9
+p_CFL = 10
+p_BC = 11
+p_freq_out = 12
+p_name = 13
+p_in = 14
+p_out = 15
 
 def selecter(quantity):
     """À partir de la quantité que l'on veut afficher détermine les bons labels et titres"""

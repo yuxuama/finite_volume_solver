@@ -1,0 +1,16 @@
+Gamma: 1.4
+g: 1
+ht: 0
+k: 1
+cv: 1
+nx: 50
+ny: 50
+Lx: 1
+Ly: 1
+T end: 1e-4
+CFL: 0.9
+BC: reflex
+freq out: 1e-5
+name: Diffusion simple
+input name: simple_diffusion
+output dir: simple_diffusion

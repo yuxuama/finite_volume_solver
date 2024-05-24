@@ -16,22 +16,24 @@ j_speedy = 3
 p_gamma = 0 # Pour les tableaux de grandeurs primitives
 p_g = 1
 p_ht = 2
-p_cv = 3
-p_nx = 4
-p_ny = 5
-p_Lx = 6
-p_Ly = 7
-p_T_end = 8
-p_CFL = 9
-p_BC = 10
-p_freq_out = 11
-p_name = 12
-p_in = 13
-p_out = 14
+p_k = 3
+p_cv = 4
+p_nx = 5
+p_ny = 6
+p_Lx = 7
+p_Ly = 8
+p_T_end = 9
+p_CFL = 10
+p_BC = 11
+p_freq_out = 12
+p_name = 13
+p_in = 14
+p_out = 15
 
 param_struct = [  ("Gamma", float),
                 ("g", float),
                 ("ht", float),
+                ("k", float),
                 ("cv", float),
                 ("nx", int),
                 ("ny", int),

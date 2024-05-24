@@ -66,9 +66,16 @@ def compute_flux(U, i, j, params, axis, side):
     
     return F
 
+@njit
+def t(U, i, j, ny, T0, params):
+    """Calcul la température en prenant en compte la température des bords"""
+    if j==0 or j==ny+1:
+        return T0[j]
+    return get_temp(U[i, j], params)
+
 @njit(parallel=True)
 def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
-    """Relation de récurrence entre les vecteurs U"""
+    """Applique la relation de récurrence au vecteur U"""
     a = params[p_gamma] * params[p_ht] * dt
     for i in prange(1, nx+1):
         for j in prange(1, ny+1):
@@ -76,9 +83,18 @@ def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
             U[i, j] = U_old[i, j] - (dt/dx) * (compute_flux(U_old, i+1, j, params, axis=0, side=1) - compute_flux(U_old, i, j, params, axis=0, side=-1)) - (dt/dy) * (compute_flux(U_old, i, j+1, params, axis=1, side=1) - compute_flux(U_old, i, j, params, axis=1, side=-1))
 
             # On applique les termes sources de chaleur
+            # Diffusion thermique
+            Told = get_temp(U_old[i, j], params)
+            Tdiff = (get_temp(U_old[i+1, j], params) +  get_temp(U_old[i-1, j], params) - 2 * Told) / (dx*dx)
+            Tdiff += (t(U_old, i, j+1, ny, T0, params) + t(U_old, i, j-1, ny, T0, params) + 2 * Told) / (dy*dy)
+            Tdiff *= 0.5 * params[p_k] * dt
+            U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * Tdiff
+            
+            # Rappel thermique (buoyancy)
             Told = get_temp(U[i, j], params)
-            Tnew = (Told - T0[j]*a) / (1 - a)
-            U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * (Tnew - Told)   
+            Tnew = (Told - a*T0[j]) / (1 - a)
+            U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * (Tnew - Told)
+
 
 @njit(parallel=True)
 def compute_dt(U, nx, ny, dx, dy, params):
@@ -87,8 +103,10 @@ def compute_dt(U, nx, ny, dx, dy, params):
     for i in prange(1, nx + 1):
         for j in prange(1, ny+1):
             speed_info = np.abs(get_speed(U[i, j])) + get_sound_speed(U[i, j], params)
-            dt_loc = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
-            dt = min(dt, dt_loc)
+            dt_loc_ad = (params[p_CFL] / speed_info) * 1. / (1./dx + 1./dy)
+            dt_loc_diff = (params[p_CFL] / params[p_k]) * 1. / (1./(dx**2) + 1./(dy**2))
+            dt = min(dt, dt_loc_ad)
+            dt = min(dt, dt_loc_diff)
     return dt             
         
 def solve(params):
