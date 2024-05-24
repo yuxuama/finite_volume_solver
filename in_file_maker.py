@@ -287,7 +287,7 @@ def simple_convection(params, gradT, rho_grd, T_grd, C, kx, ky):
     labels = ('data', 'temperature')
     save(params[p_in], (U, T), params, labels)
 
-def simple_diffusion(params, Tdown, Tup, rho_grd = 1):
+def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
     """Donne les conditions initiales d'un problème de diffusion basique:
     équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
     Pas de perturbation
@@ -302,23 +302,23 @@ def simple_diffusion(params, Tdown, Tup, rho_grd = 1):
     dy = Ly / ny
 
     # Encode les températures aux bords
-    T = np.ones(ny+2, dtype=float) * 0.5 * (Tdown + Tup)
-    T[0] = Tdown
-    T[-1] = Tup
+    T = np.ones((nx+2, ny+2), dtype=float) * 0.5 * (Tdown + Tup)
+    T[:, 0] = Tdown + C * np.cos(np.arange(0, k * np.pi, nx+2))
+    T[:, ny+1] = Tup
 
     # En utilisant les primitives (masse, pression, vitesse)
     # Encode l'équilibre hydrostatique
 
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
-    Q[:, 1, 0] = np.ones((nx+2,), dtype=float) * rho_grd
-    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[1], params) * np.ones((nx+2))
+    Q[:, 1, 0] = rho_grd
+    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params)
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
 
     for i in range(1, nx+1):
         for j in range(2, ny+1):
-            Q[i, j, 0] = Q[i, j-1, 0] * (T[j-1] * a - 1) / (1 + T[j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[j], params) 
+            Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params) 
      
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
@@ -333,17 +333,17 @@ def simple_diffusion(params, Tdown, Tup, rho_grd = 1):
     ax[1].pcolormesh(Q[:, :, 1].T)
     ax[2].pcolormesh(Q[:, :, 2].T)
     ax[3].pcolormesh(Q[:, :, 3].T)
-    ax[4].plot(T, np.linspace(-dy, Lx+dy, nx+2))
+    ax[4].pcolormesh(T.T)
     ax[0].set_title("Densité")
     ax[1].set_title("Pression")
     ax[2].set_title("Vitesse x")
     ax[3].set_title("Vitesse y")
-    ax[4].set_title("Profil de température")
-    ax[4].set(xlabel='Température', ylabel='$y$')
+    ax[4].set_title("Température")
     ax[0].set_aspect('equal', adjustable='box')
     ax[1].set_aspect('equal', adjustable='box')
     ax[2].set_aspect('equal', adjustable='box')
     ax[3].set_aspect('equal', adjustable='box')
+    ax[4].set_aspect('equal', adjustable='box')
     plt.show()
 
     U = primitive_into_conservative(Q, params)
