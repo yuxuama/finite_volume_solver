@@ -1,8 +1,17 @@
 import numpy as np
 from numba import njit, prange
-import h5py
+from in_file_maker import sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
 from utils import *
 import tqdm
+
+func_dict={
+    'sod_shock_tube': sod_shock_tube,
+    'riemann_problem_2d': riemann_problem_2d,
+    'rt_instability': rt_instability,
+    'hydrostatic': hydrostatic,
+    'simple_convection': simple_convection,
+    'simple_diffusion': simple_diffusion,
+}
 
 # Méthode des volumes finis
 
@@ -113,7 +122,7 @@ def compute_dt(U, nx, ny, dx, dy, params):
             dt = min(dt, dt_loc)
     return dt             
         
-def solve(params):
+def solve(params, init_function, **kwargs):
     """Applique la méthode des volumes finis pour le problème défini par les paramètres `params`
     Sauvegarde l'évolution à la fréquence fixée dans les paramètres
     Sauvegarde en calculant *in situ* les énergies cinétiques
@@ -124,12 +133,8 @@ def solve(params):
 
     # Array des états du système à un instant t et t+dt (shape = (nx, ny, 4))
     
-    f = h5py.File(params[p_in], 'r')
-
-    U_old = f['data'][:]
+    U_old, T0 = func_dict[init_function](params, **kwargs)
     U = np.ones_like(U_old)
-
-    T0 = f['temperature'][:]
 
     # Discretisation de l'espace
     dx = params[p_Lx] / nx
@@ -142,7 +147,7 @@ def solve(params):
 
     # Paramètres pour les sorties
     i = 1
-    total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_freq_out])))
+    total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_T_io])))
     time = []
     ekin_x = []
     ekin_y = []
@@ -151,11 +156,11 @@ def solve(params):
 
         dt = compute_dt(U_old, nx, ny, dx, dy, params)
 
-        if i * params[p_freq_out] <= t+dt:
+        if i * params[p_T_io] <= t+dt:
             n_zeros = int(np.floor(np.log10(i)))
             save_u(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
             i += 1
-            dt = (i-1) * params[p_freq_out] - t
+            dt = (i-1) * params[p_T_io] - t
 
             # Calcul in-situ des énergies cinétiques
             time.append(t)

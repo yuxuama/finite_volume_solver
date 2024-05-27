@@ -1,17 +1,26 @@
+# --- Paramètres physiques
 Gamma: 1.4
-g: 0.0
+g: 0
 ht: 0
 k: 0
 cv: 1
-mu: 1
+
+# --- Paramètres de simulation
 nx: 150
 ny: 150
 Lx: 1
 Ly: 1
+CFL: 0.9
 T end: 0.8
-CFL: 0.4
+T io: 0.75
+
+# --- Condition aux limites
 BC: neumann
-freq out: 0.02
-name: 2D Riemann
-input name: riemann_2d
-output name: riemann_2d
+
+# --- Conditions initiales
+# Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
+function: riemann_problem_2d
+
+# --- Paramètres d'enregistrement
+name: Riemann 2D test
+output dir: riemann_2d

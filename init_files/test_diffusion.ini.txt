@@ -1,16 +1,30 @@
+# --- Paramètres physiques
 Gamma: 1.4
 g: 1
 ht: 0
 k: 0.01
 cv: 1
+
+# --- Paramètres de simulation
 nx: 50
 ny: 50
 Lx: 1
 Ly: 1
-T end: 100
 CFL: 0.9
+T end: 30
+T io: 1
+
+# --- Condition aux limites
 BC: reflex
-freq out: 1
+
+# --- Conditions initiales
+# Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
+function: simple_diffusion
+Tdown: 30
+Tup: 3
+C: 1e-5
+kx: 2
+
+# --- Paramètres d'enregistrement
 name: Diffusion simple
-input name: simple_diffusion
-output dir: simple_diffusion
+output dir: simple_diffusion_test

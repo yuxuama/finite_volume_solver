@@ -1,17 +1,26 @@
+# --- Paramètres physiques
 Gamma: 1.4
 g: 0.1
 ht: 0
 k: 0
 cv: 1
-mu: 1
+
+# --- Paramètres de simulation
 nx: 50
 ny: 150
 Lx: 0.5
 Ly: 1.5
+CFL: 0.9
 T end: 5
-CFL: 0.4
+T io: 0.5
+
+# --- Condition aux limites
 BC: reflex
-freq out: 0.02
-name: Hydrostatic
-input name: static_2d
-output name: static_2d
+
+# --- Conditions initiales
+# Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
+function: hydrostatic
+
+# --- Paramètres d'enregistrement
+name: Hydrostatic test
+output dir: static_2d

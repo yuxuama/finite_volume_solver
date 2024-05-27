@@ -7,7 +7,7 @@ from utils import extract_parameter, get_temp_from_pressure
 import h5py
 import os
 
-p_gamma = 0 # Pour les tableaux de grandeurs primitives
+p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
 p_ht = 2
 p_k = 3
@@ -19,10 +19,9 @@ p_Ly = 8
 p_T_end = 9
 p_CFL = 10
 p_BC = 11
-p_freq_out = 12
+p_T_io = 12
 p_name = 13
-p_in = 14
-p_out = 15
+p_out = 14
 
 def get_normalize_cmap(file_list, quantity, ratio):
     """Renvoie une normalisation globale pour la colormap
@@ -41,7 +40,7 @@ def get_normalize_cmap(file_list, quantity, ratio):
     return Normalize(-maxi*ratio, maxi*ratio)
 
 
-def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False, ratio=1, **kwargs):
+def animate_quantity(dirpath, quantity, frames=None, rest_time=200, global_norm=False, ratio=1, **kwargs):
     """Anime la `quantity` en fonction des données des fichiers contenu dans le dossier `dirpath`
     La durée du `rest_time` doit être donnée en ms
     """
@@ -50,6 +49,9 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
 
     files = [dirpath + f for f in os.listdir(dirpath)]
     files.sort()
+    
+    if frames is None:
+        frames = len(files) - 1
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
 
@@ -58,7 +60,7 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
     Lx = params[p_Lx]
     Ly = params[p_Ly]
     T_end = params[p_T_end]
-    freq = 1/params[p_freq_out]
+    freq = 1/params[p_T_io]
 
     x = np.linspace(0, Lx, nx)
     y = np.linspace(0, Ly, ny)
@@ -87,12 +89,15 @@ def animate_quantity(dirpath, quantity, frames, rest_time=200, global_norm=False
     ani = FuncAnimation(fig, animate, frames=frames, interval=rest_time, blit=True, repeat=False)
     return ani
 
-def animate_temperature(dirpath, frames, rest_time=200, **kwargs):
+def animate_temperature(dirpath, frames=None, rest_time=200, **kwargs):
     """Fait une animation de la température au cours du temps à partir des sauvegardes
     du dossier `dirpath`"""
 
     files = [dirpath + f for f in os.listdir(dirpath)]
     files.sort()
+
+    if frames is None:
+        frames = len(files) - 1
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
 
@@ -101,7 +106,7 @@ def animate_temperature(dirpath, frames, rest_time=200, **kwargs):
     Lx = params[p_Lx]
     Ly = params[p_Ly]
     T_end = params[p_T_end]
-    freq = 1/params[p_freq_out]
+    freq = 1/params[p_T_io]
 
     x = np.linspace(0, Lx, nx)
     y = np.linspace(0, Ly, ny)
@@ -131,5 +136,5 @@ def animate_temperature(dirpath, frames, rest_time=200, **kwargs):
     return ani
 
 if __name__ == '__main__':
-    ani = animate_quantity('./out/simple_diffusion/', 'v', 30, rest_time=100, cmap='coolwarm', shading='auto')
+    ani = animate_temperature('./out/simple_diffusion_test/', cmap='coolwarm', shading='auto')
     plt.show()

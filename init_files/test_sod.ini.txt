@@ -15,3 +15,30 @@ freq out: 0.02
 name: 2D SOD
 input name: sod_shock_2d_11
 output name: sod_shock_2d_11
+
+# --- Paramètres physiques
+Gamma: 1.4
+g: 0
+ht: 0
+k: 0
+cv: 1
+
+# --- Paramètres de simulation
+nx: 100
+ny: 100
+Lx: 1
+Ly: 1
+CFL: 0.9
+T end: 10
+T io: 10
+
+# --- Condition aux limites
+BC: neumann
+
+# --- Conditions initiales
+# Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
+function: sod_shock_tube
+
+# --- Paramètres d'enregistrement
+name: Sod shock 2D
+output dir: rsod_shock_2d

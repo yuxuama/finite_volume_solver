@@ -1,17 +1,27 @@
+# --- Paramètres physiques
 Gamma: 1.4
 g: 0.1
 ht: 0
 k: 0
 cv: 1
-mu: 1
+
+# --- Paramètres de simulation
 nx: 50
 ny: 150
 Lx: 0.5
 Ly: 1.5
+CFL: 0.9
 T end: 12.4
-CFL: 0.4
+T io: 12.4
+
+# --- Condition aux limites
 BC: reflex
-freq out: 0.02
+
+# --- Conditions initiales
+# Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
+function: rt_instability
+C: 1e-5
+
+# --- Paramètres d'enregistrement
 name: Instabilite de Rayleigh-Taylor
-input name: rt_insta_2d
-output name: rt_insta_2d
+output dir: rt_insta_2d

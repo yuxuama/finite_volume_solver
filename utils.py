@@ -13,7 +13,7 @@ j_press = 1
 j_speedx = 2
 j_speedy = 3
 
-p_gamma = 0 # Pour les tableaux de grandeurs primitives
+p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
 p_ht = 2
 p_k = 3
@@ -25,10 +25,9 @@ p_Ly = 8
 p_T_end = 9
 p_CFL = 10
 p_BC = 11
-p_freq_out = 12
+p_T_io = 12
 p_name = 13
-p_in = 14
-p_out = 15
+p_out = 14
 
 param_struct = [  ("Gamma", float),
                 ("g", float),
@@ -42,34 +41,46 @@ param_struct = [  ("Gamma", float),
                 ("T end", float),
                 ("CFL", float),
                 ("BC", str),
-                ("freq out", float),
+                ("T io", float),
                 ("name", str),
-                ("input name", str),
                 ("output dir", str)
 ]
+
 
 def init_param(filename):
     """Définit tous les paramètres de la simulation étant donné un fichier txt du bon format"""
     params = [0 for _ in range(len(param_struct))]
+    init_function = None
+    kwargs={}
     with open(filename, 'r') as f:
         i = 0
         for line in f.readlines():
-
-            header_size = len(param_struct[i][0]) + 1 # On inclut les :
-
-            if param_struct[i][1] is float:
-                params[i] = float(line[header_size::])
-            elif param_struct[i][1] is str:
-                params[i] = line[header_size::].lower().strip()
-            elif param_struct[i][1] is int:
-                params[i] = int(line[header_size::])
-            i+=1
+            
+            if line[0] == '#' or line == '\n':
+                continue
+            line = line.split(':')
+            change = False
+            for i in range(len(param_struct)):
+                if param_struct[i][0]==line[0]:
+                    change = True
+                    if param_struct[i][1] is float:
+                        params[i] = float(line[1])
+                    elif param_struct[i][1] is int:
+                        params[i] = int(line[1])
+                    elif param_struct[i][1] is str:
+                        params[i] = str(line[1].lower().strip())
+                    break
+            
+            if not change:
+                if line[0] == 'function':
+                    init_function = line[1].strip()
+                else:
+                    kwargs[line[0]] = float(line[1])
         
     assert params[p_BC] in ['neumann', 'periodic', 'reflex']
-    params[p_in] = "./in/" + params[p_in] + '.h5'
     params[p_out] = "./out/" + params[p_out] + '/'
     os.makedirs(params[p_out], exist_ok=True)
-    return tuple(params) # Pour que numba fonctionne (objet non modifiable)
+    return tuple(params), init_function, kwargs
 
 def create_all_attribute(dset, params):
     """Met en attribut d'un hdf5 tous les paramètres de la simumation"""

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import h5py
 from utils import extract_parameter, get_temp_from_pressure
 
-p_gamma = 0 # Pour les tableaux de grandeurs primitives
+p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
 p_ht = 2
 p_k = 3
@@ -15,10 +15,9 @@ p_Ly = 8
 p_T_end = 9
 p_CFL = 10
 p_BC = 11
-p_freq_out = 12
+p_T_io = 12
 p_name = 13
-p_in = 14
-p_out = 15
+p_out = 14
 
 def selecter(quantity):
     """À partir de la quantité que l'on veut afficher détermine les bons labels et titres"""

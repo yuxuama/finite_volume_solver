@@ -1,8 +1,22 @@
 import numpy as np
-import h5py
-from utils import *
+from utils import get_pressure_from_temp, periodic, reflex, neumann, primitive_into_conservative
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+
+p_gamma = 0 # Pour le tuple des paramètres
+p_g = 1
+p_ht = 2
+p_k = 3
+p_cv = 4
+p_nx = 5
+p_ny = 6
+p_Lx = 7
+p_Ly = 8
+p_T_end = 9
+p_CFL = 10
+p_BC = 11
+p_T_io = 12
+p_name = 13
+p_out = 14
 
 def sod_shock_tube(params, direction):
     """ Créer le fichier de condition initiale pour les paramètres donnés
@@ -41,10 +55,9 @@ def sod_shock_tube(params, direction):
     plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
     plt.show()
 
-    with h5py.File(params[p_in], 'w') as f:
-        f['data'] = primitive_into_conservative(Q, params)
-        f.create_group('metadata')
-        create_all_attribute(f['metadata'], params)
+    U = primitive_into_conservative(Q, params)
+    
+    return U, None
     
 def riemann_problem_2d(params):
     """Défini les conditions initiales pour le problème de Riemann 2D"""
@@ -86,26 +99,24 @@ def riemann_problem_2d(params):
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
     
-    with h5py.File(params[p_in], 'w') as f:
-        U = primitive_into_conservative(Q, params)
-        f['data'] = U
+    
+    U = primitive_into_conservative(Q, params)
 
-        fig, ax = plt.subplots(1, 4, figsize=(15, 4))
-        fig.suptitle("Conditions initiales")
-        ax[0].pcolormesh(U[1:nx+1,1:ny+1, 0])
-        ax[1].pcolormesh(U[1:nx+1,1:ny+1, 1])
-        ax[2].pcolormesh(U[1:nx+1,1:ny+1, 2])
-        ax[3].pcolormesh(U[1:nx+1,1:ny+1, 3])
-        ax[0].set_title("Densité")
-        ax[1].set_title("Impulsion x")
-        ax[2].set_title("Impulsion y")
-        ax[3].set_title("Énergie")
-        plt.show()
+    fig, ax = plt.subplots(1, 4, figsize=(15, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(U[1:nx+1,1:ny+1, 0])
+    ax[1].pcolormesh(U[1:nx+1,1:ny+1, 1])
+    ax[2].pcolormesh(U[1:nx+1,1:ny+1, 2])
+    ax[3].pcolormesh(U[1:nx+1,1:ny+1, 3])
+    ax[0].set_title("Densité")
+    ax[1].set_title("Impulsion x")
+    ax[2].set_title("Impulsion y")
+    ax[3].set_title("Énergie")
+    plt.show()
 
-        f.create_group('metadata')
-        create_all_attribute(f['metadata'], params)
+    return U, None
 
-def rt_instability(params, C):
+def rt_instability(params, C=0):
     """Créer le fichier des conditions initiale pour les paramètres donnés
     et pour le problème de l'instabilité de Rayleigh-Taylor
     `C` est l'amplitude de la perturbation de l'équilibre hydrostatique
@@ -159,10 +170,8 @@ def rt_instability(params, C):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    with h5py.File(params[p_in], 'w') as f:
-        f['data'] = primitive_into_conservative(Q, params)
-        f.create_group('metadata')
-        create_all_attribute(f['metadata'], params)
+    U =  primitive_into_conservative(Q, params)
+    return U, None
 
 def hydrostatic(params):
     """Créer le fichier des conditions initiales pour un cas hydrostatique
@@ -214,12 +223,10 @@ def hydrostatic(params):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    with h5py.File(params[p_in], 'w') as f:
-        f['data'] = primitive_into_conservative(Q, params)
-        f.create_group('metadata')
-        create_all_attribute(f['metadata'], params)
+    U = primitive_into_conservative(Q, params)
+    return U, None
 
-def simple_convection(params, gradT, T_grd, rho_grd, C, kx, ky):
+def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
     """Calcul la condition initiale pour un problème de convection basique
     `gradT` fixe le gradient de température vertical
     `rho_grd` fixe la valeur de la densité en bas de la boîte
@@ -284,10 +291,9 @@ def simple_convection(params, gradT, T_grd, rho_grd, C, kx, ky):
     plt.show()
     
     U = primitive_into_conservative(Q, params)
-    labels = ('data', 'temperature')
-    save(params[p_in], (U, T), params, labels)
+    return U, T
 
-def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
+def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
     """Donne les conditions initiales d'un problème de diffusion basique:
     équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
     Pas de perturbation
@@ -304,11 +310,7 @@ def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
 
     # Encode les températures aux bords
     T = np.ones((nx+2, ny+2), dtype=float) * 0.5 * (Tdown + Tup)
-    for i in range(nx+2):
-        if i < (nx+2)/2:
-            T[i, 0] = Tdown 
-        else:
-            T[i, 0] = Tdown + C
+    T[:, 0] = Tdown + C * np.sin(np.linspace(0, kx * np.pi, ny+2))
     T[:, ny+1] = Tup
 
     # En utilisant les primitives (masse, pression, vitesse)
@@ -326,7 +328,6 @@ def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
             y = (j-0.5) * dy
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
             Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
-            Q[i, j, 3] = 0.001 * np.sin(np.pi * 2 * x / Lx) * np.sin(np.pi * 1 * y / Ly)
      
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
@@ -355,30 +356,4 @@ def simple_diffusion(params, Tdown, Tup, C, k, rho_grd = 1):
     plt.show()
 
     U = primitive_into_conservative(Q, params)
-    labels = ('data', 'temperature')
-    save(params[p_in], (U, T), params, labels)
-
-
-# Depreciated
-def two_rarefaction(params):
-    """Créer le fichier de condition initiale pour les paramètres donnés
-    pour le problème de la 2-raréfaction
-    """
-    
-    N = params[p_nx]
-
-    Q = np.ones((N+2, 3)) * np.array([1., 0.4, -2.])
-    Q[(N+2)//2:N+2, :] *= np.array([1., 1., -1.])
-
-    if params[p_BC] == 'periodic':
-        Q[0] = Q[N]
-        Q[N + 1] = Q[1]
-
-    with h5py.File(params[p_in], 'w') as f:
-        input_dset = f.create_dataset('data', (N+2, 3), dtype=float)
-        input_dset[:] = primitive_into_conservative(Q, params)
-        create_all_attribute(input_dset, params)
-
-if __name__ == '__main__':
-    params = init_param('test.ini.txt')
-    sod_shock_tube(params)
+    return U, T

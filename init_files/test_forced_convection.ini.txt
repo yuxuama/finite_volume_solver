@@ -1,16 +1,30 @@
+# --- Paramètres physiques
 Gamma: 1.4
 g: 1
 ht: -0.1
 k: 0
 cv: 1
+
+# --- Paramètres de la simulation
 nx: 100
 ny: 100
 Lx: 1
 Ly: 1
-T end: 100
 CFL: 0.9
+T end: 100
+T io: 1
+
+# --- Conditions aux limites 
 BC: reflex
-freq out: 1
+
+# --- Conditions initiales
+function: simple_convection
+gradT: -6
+T_grd: 10
+C: 1e-5
+kx: 2
+ky: 1
+
+# --- Paramètres d'enregistrement
 name: Convection forcee
-input name: forced_convection
 output dir: forced_convection
