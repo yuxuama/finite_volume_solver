@@ -138,5 +138,5 @@ def animate_temperature(dirpath, frames=None, rest_time=200, **kwargs):
     return ani
 
 if __name__ == '__main__':
-    ani = animate_temperature('./out/simple_diffusion_test/', cmap='coolwarm', shading='auto')
+    ani = animate_quantity('./out/simple_diffusion_test/', 'rho', cmap='plasma', shading='auto')
     plt.show()

@@ -25,7 +25,7 @@ def conservation(dirpath, quantity, dS):
     return quantity_sum
 
 if __name__ == '__main__':
-    dirpath = "./out/simple_diffusion/"
+    dirpath = "./out/simple_diffusion_test/"
     dS = 1e-4
     mass = conservation(dirpath, 'rho', dS)
     mx = conservation(dirpath, 'momentum x', dS)

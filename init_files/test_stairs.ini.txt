@@ -6,16 +6,16 @@ k: 0.01
 cv: 1
 
 # --- Paramètres de simulation
-nx: 60
-ny: 50
-Lx: 1
+nx: 100
+ny: 100
+Lx: 4
 Ly: 1
 CFL: 0.9
-T end: 60
-T io: 1
+T end: 4
+T io: 0.5
 
-# --- Conditions aux limites
-BC: closed
+# --- Condition aux limites
+BC: reflex
 
 # --- Conditions initiales
 # Préciser le nom de la fonction de `in_maker_file.py` et ses arguments

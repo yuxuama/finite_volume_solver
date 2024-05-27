@@ -182,6 +182,8 @@ def solve(params, init_function, **kwargs):
             periodic(U, nx, ny)
         elif params[p_BC] == 'reflex':
             U = reflex(U, params)
+        elif params[p_BC] == 'closed':
+            U = closed(U, params)
 
         U_old = U.copy()
         t += dt

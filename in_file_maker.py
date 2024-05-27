@@ -1,5 +1,5 @@
 import numpy as np
-from utils import get_pressure_from_temp, periodic, reflex, neumann, primitive_into_conservative
+from utils import get_pressure_from_temp, periodic, closed, reflex, neumann, primitive_into_conservative
 import matplotlib.pyplot as plt
 
 p_gamma = 0 # Pour le tuple des paramètres
@@ -51,6 +51,8 @@ def sod_shock_tube(params, direction):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
 
     plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
     plt.show()
@@ -98,6 +100,8 @@ def riemann_problem_2d(params):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
     
     
     U = primitive_into_conservative(Q, params)
@@ -153,6 +157,8 @@ def rt_instability(params, C=0):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -206,6 +212,8 @@ def hydrostatic(params):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -270,6 +278,8 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
 
     fig, ax = plt.subplots(1, 5, figsize=(17, 4))
     fig.suptitle("Conditions initiales")
@@ -296,17 +306,18 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
 def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
     """Donne les conditions initiales d'un problème de diffusion basique:
     équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
-    Pas de perturbation
+    **Input**
     `Tdown` fixe la température en bas
     `Tup` fixe la température en haut
     `p0` fixe la pression en bas de la boîte
+    **Output**
+    `U` le tableau des grandeurs conseravatives
+    `T` le tableau de la température    
     """
     nx = params[p_nx]
     ny = params[p_ny]
-    Lx = params[p_Lx]
     Ly = params[p_Ly]
     dy = Ly / ny
-    dx = Lx / nx
 
     # Encode les températures aux bords
     T = np.ones((nx+2, ny+2), dtype=float) * 0.5 * (Tdown + Tup)
@@ -333,6 +344,8 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
         neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
         reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 5, figsize=(17, 4))
     fig.suptitle("Conditions initiales")

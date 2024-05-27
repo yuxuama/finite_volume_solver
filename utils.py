@@ -77,7 +77,7 @@ def init_param(filename):
                 else:
                     kwargs[line[0]] = float(line[1])
         
-    assert params[p_BC] in ['neumann', 'periodic', 'reflex']
+    assert params[p_BC] in ['neumann', 'periodic', 'reflex', 'closed']
     params[p_out] = "./out/" + params[p_out] + '/'
     os.makedirs(params[p_out], exist_ok=True)
     return tuple(params), init_function, kwargs
@@ -230,7 +230,8 @@ def periodic(U, nx, ny):
 
 @njit
 def reflex(Q, params, is_conservative=True):
-    """Modifie U pour que le tableaux vérifie les conditions réflexives
+    """Modifie Q pour que le tableaux vérifie les conditions réflexives.
+    Si Q est en fait les variables conservatives retourne le nouveaux U.
     Périodique selon les x
     Blocage selon y (fermeture) vérifiant l'équilibre hydro
     `is_conservative` permet de traiter le cas où la variable passée et le vecteur des grandeurs conservatives
@@ -258,4 +259,33 @@ def reflex(Q, params, is_conservative=True):
     if is_conservative:
         return primitive_into_conservative(Q, params)
 
+@njit
+def closed(Q, params, is_conservative=True):
+    """Modifie Q pour que le tableaux vérifie les conditions réflexives.
+    Si Q est en fait les variables conservatives retourne le nouveaux U.
+    Fermée au niveau de tous les bords"""
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    dy = Ly/ny
 
+    if is_conservative:
+        Q = conservative_into_primitive(Q, params)
+
+    # Fermeture selon les x
+    Q[0, :, :] = Q[1, :, :]
+    Q[nx + 1, :, :] = Q[nx, :, :]
+    Q[0, :, j_speedx] = - Q[1, :, j_speedx]
+    Q[nx + 1, :, j_speedx] = - Q[nx, :, j_speedx]
+    # Fermeture de la boîte en respectant l'équilibre
+    Q[:, 0, j_mass] = Q[:, 1, j_mass] # Masse
+    Q[:, ny+1, j_mass] = Q[:, ny, j_mass]
+    Q[:, 0, j_speedx] = Q[:, 1, j_speedx] # Vitesse selon x
+    Q[:, ny+1, j_speedx] = Q[:, ny, j_speedx]
+    Q[:, 0, j_speedy] = - Q[:, 1, j_speedy] # Vitesse selon y
+    Q[:, ny+1, j_speedy] = - Q[:, ny, j_speedy]
+    Q[:, 0, j_press] = Q[:, 1, j_press] + params[p_g] * dy * Q[:, 1, j_mass] # Pression (équilibre hydro)
+    Q[:, ny+1, j_press] = Q[:, ny, j_press] - params[p_g] * dy * Q[:, ny, j_mass]
+
+    if is_conservative:
+        return primitive_into_conservative(Q, params)
