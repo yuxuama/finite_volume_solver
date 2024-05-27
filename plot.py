@@ -212,7 +212,7 @@ def plot_temperature(filepath, ax=None, **kwargs):
         ax.set_ylabel('$y$')        
         plt.show()
 
-def plot_energy(filepath, **kwargs):
+def plot_energy(filepath):
     """Trace les diagrammes d'énergie"""
     f = h5py.File(filepath, 'r')
 
@@ -233,7 +233,7 @@ def plot_energy(filepath, **kwargs):
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/simple_diffusion/energies.h5'
+    file = './out/simple_diffusion_test/energies.h5'
     plot_energy(file)
 
     

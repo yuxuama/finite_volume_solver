@@ -310,7 +310,7 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
 
     # Encode les températures aux bords
     T = np.ones((nx+2, ny+2), dtype=float) * 0.5 * (Tdown + Tup)
-    T[:, 0] = Tdown + C * np.sin(np.linspace(0, kx * np.pi, ny+2))
+    T[:, 0] = Tdown + C * np.sin(np.linspace(0, kx * np.pi, nx+2))
     T[:, ny+1] = Tup
 
     # En utilisant les primitives (masse, pression, vitesse)
@@ -324,8 +324,6 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
 
     for i in range(1, nx+1):
         for j in range(2, ny+1):
-            x = (i-0.5) * dx
-            y = (j-0.5) * dy
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
             Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
      

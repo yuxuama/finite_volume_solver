@@ -77,6 +77,7 @@ def animate_quantity(dirpath, quantity, frames=None, rest_time=200, global_norm=
            xlabel="$x$",
            ylabel="$y$"
     )
+    ax.set_aspect('equal', adjustable='box')
 
     def animate(frame): 
         data = h5py.File(files[frame+1], 'r')[quantity][:]
@@ -120,6 +121,7 @@ def animate_temperature(dirpath, frames=None, rest_time=200, **kwargs):
            xlabel="$x$",
            ylabel="$y$"
     )
+    ax.set_aspect('equal', adjustable='box')
     
     def animate(frame):
         f = h5py.File(files[frame+1], 'r')
