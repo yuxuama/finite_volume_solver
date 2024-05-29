@@ -368,3 +368,85 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
 
     U = primitive_into_conservative(Q, params)
     return U, T
+
+def stairs(params, gradT, T_grd, breakpoint, rho0, C, kx):
+    """Génère les conditions initiale en suivant le papier 'Extremely long phase transition [...]' 
+    `gradT` fixe le gradient de température haut - bas
+    `T_grd` fixe la température en bas de la boîte
+    `breakpoint` fixe le pointe de rupture pour le graphe de la température
+    `rho0` fixe la densité en haut de la boîte
+    La pression est déterminée directement avec le profil de température 
+    """
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    dy = Ly / ny
+
+    # Initialisation de la température
+    T_up = T_grd + Ly * gradT
+    T_moy = 0.5 * (T_grd + T_up)
+    #gradT_low = gradT/4
+    #gradT_high = 4 * gradT
+    T = np.zeros((nx+2, ny+2), dtype=float)
+    T[:, 0] = T_grd + C * np.sin(np.linspace(0, kx * np.pi, nx+2))
+    T[:, ny+1] = T_up
+    for i in range(1, nx+1):
+        for j in range(1, ny+1):
+            y = (j - 0.5) * dy
+            T[i, j] = 3 *(Ly - y) + T_up
+
+    # Initialisation des variables de description du fluide
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 0] = rho0
+    Q[:, 1, 1] = get_pressure_from_temp(rho0, T[:, 1], params)
+
+    a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
+
+    for i in range(1, nx+1):
+        for j in range(2, ny+1):
+            Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+    
+    """
+    for i in range(1, nx+1):
+        for j in range(1, ny+1):
+            y = (j-0.5) * dy
+            if y <= breakpoint * Ly:
+                T[i, j] = T_grd + gradT_low * y
+            else:
+                T[i, j] = T_grd + 0.2 * gradT + gradT_high * (y - 0.8)
+
+            Q[i, j, 0] = rho0 + 0.01 * rho0 * (Ly - y)
+            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+    """
+    
+    if params[p_BC] == 'periodic':
+        periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        closed(Q, params, is_conservative=False)
+    
+    fig, ax = plt.subplots(1, 5, figsize=(17, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(Q[:, :, 0].T)
+    ax[1].pcolormesh(Q[:, :, 1].T)
+    ax[2].pcolormesh(Q[:, :, 2].T)
+    ax[3].pcolormesh(Q[:, :, 3].T)
+    ax[4].pcolormesh(T.T)
+    ax[0].set_title("Densité")
+    ax[1].set_title("Pression")
+    ax[2].set_title("Vitesse x")
+    ax[3].set_title("Vitesse y")
+    ax[4].set_title("Température")
+    ax[0].set_aspect('equal', adjustable='box')
+    ax[1].set_aspect('equal', adjustable='box')
+    ax[2].set_aspect('equal', adjustable='box')
+    ax[3].set_aspect('equal', adjustable='box')
+    ax[4].set_aspect('equal', adjustable='box')
+    plt.show()
+
+    U = primitive_into_conservative(Q, params)
+    return U, T

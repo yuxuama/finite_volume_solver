@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from utils import extract_parameter, get_temp_from_pressure
+from utils import extract_parameter, get_temp_from_pressure, get_potential_temp
 
 p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
@@ -19,61 +19,92 @@ p_T_io = 12
 p_name = 13
 p_out = 14
 
-def selecter(quantity):
-    """À partir de la quantité que l'on veut afficher détermine les bons labels et titres"""
+def selecter(filename, quantity):
+    """A partir de la quantité que l'on veut afficher renvoie les bonnes données à passer aux
+    fonctions de plot"""
+
+    f = h5py.File(filename, 'r')
+    params = extract_parameter(f['metadata'])
+
     if quantity == 'rho':
         quantity = "rho"
         title = "Densité"
         ylabel = "Densité ($kg.m^{-3}$)"
+        data = f[quantity][:]
     elif quantity == 'u':
         quantity = "speed x"
         title = "Vitesse en horizontale"
         ylabel = "Densité ($kg.m^{-3}$)"
+        data = f[quantity][:]
     elif quantity == 'v':
         quantity = "speed y"
         title = "Vitesse verticale"
         ylabel = "Vitesse ($m.s$)"
+        data = f[quantity][:]
     elif quantity == 'p':
         quantity = "pressure"
         title = "Pression"
         ylabel = "Pression ($Pa$)"
+        data = f[quantity][:]
     elif quantity == 'mx':
         quantity = "momentum x"
         title = "Quantité de mouvement selon x"
         ylabel = "Impulsion x"
+        data = f[quantity][:]
     elif quantity == "my":
         quantity = "momentum y"
         title = "Quantité de mouvement selon y"
         ylabel = "Impulsion y"
+        data = f[quantity][:]
+    elif quantity == "T":
+        quantity = "Temperature"
+        title = "Température"
+        ylabel = "Température (K)"
+        press = f["pressure"][:]
+        rho = f["rho"][:]
+        data = get_temp_from_pressure(press, rho, params)
+    elif quantity == "Tpot":
+        quantity = "Temperature"
+        title = "Température potentielle"
+        ylabel = "Température (K)"
+        press = f["pressure"][:]
+        rho = f["rho"][:]
+        data = get_potential_temp(press, rho, params)
+    elif quantity == "Tpots":
+        quantity = "Temperature"
+        title = "Température potentielle modifiée"
+        ylabel = "Température (K)"
     
-    return quantity, title, ylabel
+    return data, params, f, quantity, title, ylabel
+
+def get_time(filename, params):
+    """Pour un fichier donné renvoie le temps auquel le fichier fut pris"""
+    T_end = params[p_T_end]
+    T_io = params[p_T_io]
+    zeros = int(np.log10(T_end / T_io))
+    n = len(filename)
+    number = int(filename[n-zeros-1::])
+    return number * T_io
 
 def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
     """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
     `ax` permet de plot sur une autre figure
+    Si la quantité à plot est la température affiche le profil de température
     """
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
 
+    # Axe des abscisse
     if axis == 0:
         axis = 'x'
+        data = data[slice_index]
     elif axis == 1:
         axis = 'y'
-
-    quantity, title, ylabel = selecter(quantity)
-
-    # Load file
-    f = h5py.File(filepath, 'r')
-    meta = f['metadata']
-    dset = f[axis]
+        data = data[:,slice_index]
+    space = f[axis][:]
 
     # Extraction d'information
-    time = meta.attrs.get("T end")
-    name = meta.attrs.get("name")
-
-    # Getting data   
-    if axis == 'x':
-        data = f[quantity][slice_index]
-    elif axis == 'y':
-        data = f[quantity][:,slice_index]
+    time = get_time(filepath, params)
+    name = params[p_name]
 
     # Plot
     plot = False
@@ -82,30 +113,33 @@ def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
         ax = fig.add_subplot(1, 1, 1)
         plot = True
 
-    ax.plot(dset[:], data, **kwargs)
+    if quantity == "Temperature":
+        ax.plot(data, space, **kwargs)
+    else:
+        ax.plot(space, data, **kwargs)
 
     if plot:
+        if quantity == "Temperature":
+            ax.set_xlabel(ylabel)
+            ax.set_ylabel(f'${axis}$')
+        else:
+            ax.set_ylabel(ylabel)
+            ax.set_xlabel(f'${axis}$')
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel(f'${axis}$')
         plt.show()
 
 def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
     """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
     `a` et `b` paramétrisent la droite selon laquelle on veut faire une coupe
     """
-    quantity, title, ylabel = selecter(quantity)
-    
-    # Load file
-    f = h5py.File(filepath, 'r')
-    meta = f['metadata']
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
 
     # Extraction d'information
-    time = meta.attrs.get("T end")
-    name = meta.attrs.get("name")
-    Ly = meta.attrs.get('Ly')
-    ny = meta.attrs.get('ny')
-    nx = meta.attrs.get('nx')
+    time = time = get_time(filepath, params)
+    name = params[p_name]
+    Ly = params[p_Ly]
+    ny = params[p_ny]
+    nx = params[p_nx]
     dy = Ly/ny
 
     # Plot
@@ -117,7 +151,6 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
 
     # Extraction des données selon la droite
 
-    data = f[quantity][:]
     x = f['x'][:]
     y_line = a * x + b 
 
@@ -141,21 +174,59 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
         ax.set_ylabel(ylabel)
         plt.show()
 
+def plot_mean_profile(filepath, quantity, axis, ax=None, **kwargs):
+    """Trace le profil de la quantité `quantity` moyenne selon un axe"""
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
+
+    # Axe des abscisse
+    if axis == 0:
+        axis = 'x'
+        data = np.mean(data, axis=0)
+    elif axis == 1:
+        axis = 'y'
+        data = np.mean(data, axis=1)
+    space = f[axis][:]
+
+    # Extraction d'information
+    time = get_time(filepath, params)
+    name = params[p_name]
+
+    # Plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
+
+    if quantity == "Temperature":
+        ax.plot(data, space, **kwargs)
+    else:
+        ax.plot(space, data, **kwargs)
+
+    if plot:
+        if quantity == "Temperature":
+            ax.set_xlabel(ylabel)
+            ax.set_ylabel(f'${axis}$')
+        else:
+            ax.set_ylabel(ylabel)
+            ax.set_xlabel(f'${axis}$')
+        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
+        plt.show()
+
 def plot_2d(filepath, quantity, ax=None, **kwargs):
     """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
 
-    quantity, title, _ = selecter(quantity)
+    data, params, f, quantity, title, _ = selecter(filepath, quantity)
 
-    f = h5py.File(filepath, 'r')
     dset_x = f['x'][:]
     dset_y = f['y'][:]
 
     xm, ym = np.meshgrid(dset_x, dset_y)
 
     # Extracting info
-    name = f['metadata'].attrs.get("name")
-    T_end = f["metadata"].attrs.get("T end")
+    name = params[p_name]
+    time = get_time(filepath, params)
 
     # Plot
     plot = False
@@ -165,49 +236,10 @@ def plot_2d(filepath, quantity, ax=None, **kwargs):
         plot = True
 
     ax.set_aspect('equal', adjustable='box')
-    ax.pcolormesh(xm, ym, f[quantity][:], **kwargs)
+    ax.pcolormesh(xm, ym, data, **kwargs)
 
     if plot:
-        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, T_end))
-        ax.set_xlabel('$x$')
-        ax.set_ylabel('$y$')        
-        plt.show()
-
-def plot_temperature(filepath, ax=None, **kwargs):
-    """Plot la température issue des données stockées dans le fichier `filepath` (format HDF5)"""
-    # Load file
-    f = h5py.File(filepath, 'r')
-    dset_x = f['x'][:]
-    dset_y = f['y'][:]
-
-    xm, ym = np.meshgrid(dset_x, dset_y)
-
-    # Extracting info
-    name = f['metadata'].attrs.get("name")
-    T_end = f["metadata"].attrs.get("T end")
-    params = extract_parameter(f['metadata'])
-
-    # Extracting temperature
-    nx = dset_x.size
-    ny = dset_y.size
-    temp = np.zeros((nx, ny))
-
-    for i in range(nx):
-        for j in range(ny):
-            temp[i, j] = get_temp_from_pressure(f['pressure'][i, j], f['rho'][i, j], params)
-
-    # Plot
-    plot = False
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        plot = True
-
-    ax.set_aspect('equal', adjustable='box')
-    ax.pcolormesh(xm, ym, temp, cmap='hot', **kwargs)
-
-    if plot:
-        ax.set_title("{0} (Temperature) @ t = {1} s".format(name, T_end))
+        ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         ax.set_xlabel('$x$')
         ax.set_ylabel('$y$')        
         plt.show()
@@ -215,16 +247,17 @@ def plot_temperature(filepath, ax=None, **kwargs):
 def plot_energy(filepath):
     """Trace les diagrammes d'énergie"""
     f = h5py.File(filepath, 'r')
+    params = extract_parameter(f['metadata'])
 
     time = f['time'][:]
     ekin_x = f['ekin x'][:]
     ekin_y = f['ekin y'][:]
 
     name = f['metadata'].attrs.get("name")
-    T_end = f["metadata"].attrs.get("T end")
+    time = get_time(filepath, params)
 
     fig, ax = plt.subplots(1, 1)
-    fig.suptitle("{0} | évolution sur {1} s".format(name, T_end))
+    fig.suptitle("{0} | évolution sur {1} s".format(name, time))
     
     ax.semilogy(time, ekin_x, '--b', label="selon x")
     ax.semilogy(time, ekin_y, 'b', label="selon y")
@@ -233,7 +266,7 @@ def plot_energy(filepath):
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/simple_diffusion_test/energies.h5'
-    plot_energy(file)
+    file = './out/layer/'
+    plot_mean_profile(file + 'save_30', 'Tpot', 1)
 
     

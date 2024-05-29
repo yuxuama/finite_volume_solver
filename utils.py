@@ -171,14 +171,20 @@ def get_pressure_from_temp(rho, T, params):
     return rho * params[p_cv] * T * (params[p_gamma] - 1)
 
 @njit
-def get_temp_from_pressure(press, rho, params):
+def get_temp_from_pressure(pressure, rho, params):
     """Renvoie la valeur de la température à partir de la pression donnée"""
-    return press / (rho * params[p_cv] * (params[p_gamma] - 1))
+    return pressure / (rho * params[p_cv] * (params[p_gamma] - 1))
 
 @njit
 def get_temp(U, params):
     """Renvoie la température pour un vecteur d'état de fluide U """
     return get_pressure(U, params) / (U[i_mass] * params[p_cv] * (params[p_gamma] - 1))
+
+@njit
+def get_potential_temp(pressure, rho, params):
+    """Renvoie la valeur de la température potentielle pour les valeurs données"""
+    pow = (params[p_gamma] - 1) / params[p_gamma]
+    return get_temp_from_pressure(pressure, rho, params) / np.power(pressure, pow)
 
 @njit
 def get_sound_speed(U, params):

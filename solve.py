@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit, prange
-from in_file_maker import sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
+from in_file_maker import stairs, sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
 from utils import *
 import tqdm
 
@@ -11,6 +11,7 @@ func_dict={
     'hydrostatic': hydrostatic,
     'simple_convection': simple_convection,
     'simple_diffusion': simple_diffusion,
+    'stairs': stairs,
 }
 
 # Méthode des volumes finis
@@ -82,10 +83,20 @@ def t(U, i, j, ny, T0, params):
         return T0[i, j]
     return get_temp(U[i, j], params)
 
+@njit
+def ht(params, y):
+    """Renvoie la valeur de ht en fonction de l'altitude z"""
+    y_normalized = y/params[p_Ly]
+    if y_normalized < 0.3:
+        return 0
+    elif y_normalized > 0.8:
+        return params[p_ht]
+    else:
+        return params[p_ht] * (y - 0.3) / 0.5
+
 @njit(parallel=True)
 def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
     """Applique la relation de récurrence au vecteur U"""
-    a = params[p_gamma] * params[p_ht] * dt
     for i in prange(1, nx+1):
         for j in prange(1, ny+1):
             # On applique le transport             
@@ -94,13 +105,15 @@ def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
             # On applique les termes sources de chaleur
             # Diffusion thermique
             if params[p_k] != 0: # En soi pas important mais pour le temps de calcul
-                Told = get_temp(U_old[i, j], params)
-                Tdiff = (get_temp(U_old[i+1, j], params) +  get_temp(U_old[i-1, j], params) - 2 * Told) / (dx*dx)
-                Tdiff += (t(U_old, i, j+1, ny, T0, params) + t(U_old, i, j-1, ny, T0, params) - 2 * Told) / (dy*dy)
+                Toldold = get_temp(U_old[i, j], params)
+                Tdiff = (get_temp(U_old[i+1, j], params) +  get_temp(U_old[i-1, j], params) - 2 * Toldold) / (dx*dx)
+                Tdiff += (t(U_old, i, j+1, ny, T0, params) + t(U_old, i, j-1, ny, T0, params) - 2 * Toldold) / (dy*dy)
                 Tdiff *= 0.5 * params[p_k] * dt
                 U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * Tdiff
             
             # Rappel thermique (buoyancy)
+            y = (j - 0.5) * dy
+            a = params[p_gamma] * ht(params, y) * dt
             Told = get_temp(U[i, j], params)
             Tnew = (Told - a * T0[i, j]) / (1 - a)
             U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * (Tnew - Told)

@@ -1,30 +1,32 @@
 # --- Paramètres physiques
 Gamma: 1.4
-g: 1
-ht: 0
+g: 3
+ht: -5
 k: 0.01
 cv: 1
 
 # --- Paramètres de simulation
-nx: 100
-ny: 100
-Lx: 4
+nx: 50
+ny: 50
+Lx: 1
 Ly: 1
 CFL: 0.9
-T end: 4
-T io: 0.5
+T end: 40
+T io: 1
 
 # --- Condition aux limites
 BC: reflex
 
 # --- Conditions initiales
 # Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
-function: simple_diffusion
-Tdown: 30
-Tup: 3
+function: stairs
+gradT: -30
+T_grd: 33
+breakpoint: 0.8
+rho0: 1
 C: 1e-5
-kx: 4
+kx: 10
 
 # --- Paramètres d'enregistrement
-name: Diffusion simple
-output dir: simple_diffusion_test
+name: Essai escalier de convection
+output dir: layer
