@@ -187,6 +187,14 @@ def get_potential_temp(pressure, rho, params):
     return get_temp_from_pressure(pressure, rho, params) / np.power(pressure, pow)
 
 @njit
+def get_modified_potential_temp(pressure, rho, speed_x, params, kx, kz, ht):
+    """Renvoie la température potentielle modifiée qui prend en compte les effets de shear"""
+    factor = np.exp(
+        - kz * ht * np.abs(speed_x) / (kx * params[p_g])
+    )
+    return get_potential_temp(pressure, rho, params) * factor
+
+@njit
 def get_sound_speed(U, params):
     """Renvoie la vitesse du son dans la case de fluide i"""    
     return np.sqrt(params[p_gamma] * get_pressure(U, params) / U[i_mass])

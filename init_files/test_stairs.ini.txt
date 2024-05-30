@@ -1,8 +1,8 @@
 # --- Paramètres physiques
 Gamma: 1.4
-g: 3
-ht: -5
-k: 0.01
+g: 1
+ht: -0.01
+k: 0
 cv: 1
 
 # --- Paramètres de simulation
@@ -11,7 +11,7 @@ ny: 50
 Lx: 1
 Ly: 1
 CFL: 0.9
-T end: 40
+T end: 99
 T io: 1
 
 # --- Condition aux limites
@@ -19,14 +19,16 @@ BC: reflex
 
 # --- Conditions initiales
 # Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
-function: stairs
-gradT: -30
-T_grd: 33
-breakpoint: 0.8
-rho0: 1
+function: layer
+gradT: -28
+T_grd: 30
+rho_grd: 1
+start_shear: 0.7
+gradshear: 8
 C: 1e-5
-kx: 10
+kx: 2
+ky: 1
 
 # --- Paramètres d'enregistrement
-name: Essai escalier de convection
+name: Convection confinée au milieu même shear
 output dir: layer

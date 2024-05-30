@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit, prange
-from in_file_maker import stairs, sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
+from in_file_maker import layer, sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
 from utils import *
 import tqdm
 
@@ -11,7 +11,7 @@ func_dict={
     'hydrostatic': hydrostatic,
     'simple_convection': simple_convection,
     'simple_diffusion': simple_diffusion,
-    'stairs': stairs,
+    'layer': layer,
 }
 
 # Méthode des volumes finis
@@ -112,8 +112,7 @@ def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
                 U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * Tdiff
             
             # Rappel thermique (buoyancy)
-            y = (j - 0.5) * dy
-            a = params[p_gamma] * ht(params, y) * dt
+            a = params[p_gamma] * params[p_ht] * dt
             Told = get_temp(U[i, j], params)
             Tnew = (Told - a * T0[i, j]) / (1 - a)
             U[i, j, i_erg] = U[i, j, i_erg] + U[i, j, i_mass] * params[p_cv] * (Tnew - Told)
@@ -165,6 +164,10 @@ def solve(params, init_function, **kwargs):
     ekin_x = []
     ekin_y = []
 
+    # Enregistre les conditions initiales
+    save_u(U_old, params, params[p_out] + "save_" + "0"*(total_zeros+1))
+
+    # Boucles principale
     while t < params[p_T_end]:
 
         dt = compute_dt(U_old, nx, ny, dx, dy, params)

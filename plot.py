@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from utils import extract_parameter, get_temp_from_pressure, get_potential_temp
+from utils import extract_parameter, get_temp_from_pressure, get_potential_temp, get_modified_potential_temp
 
 p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
@@ -19,7 +19,7 @@ p_T_io = 12
 p_name = 13
 p_out = 14
 
-def selecter(filename, quantity):
+def selecter(filename, quantity, pot_settings):
     """A partir de la quantité que l'on veut afficher renvoie les bonnes données à passer aux
     fonctions de plot"""
 
@@ -74,7 +74,11 @@ def selecter(filename, quantity):
         quantity = "Temperature"
         title = "Température potentielle modifiée"
         ylabel = "Température (K)"
-    
+        press = f["pressure"][:]
+        rho = f["rho"][:]
+        speed_x = f["speed x"][:]
+        data = get_modified_potential_temp(press, rho, speed_x, params, *pot_settings)
+
     return data, params, f, quantity, title, ylabel
 
 def get_time(filename, params):
@@ -86,12 +90,12 @@ def get_time(filename, params):
     number = int(filename[n-zeros-1::])
     return number * T_io
 
-def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
+def plot_slice(filepath, quantity, slice_index, axis, pot_settings, ax=None, **kwargs):
     """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
     `ax` permet de plot sur une autre figure
     Si la quantité à plot est la température affiche le profil de température
     """
-    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity, pot_settings)
 
     # Axe des abscisse
     if axis == 0:
@@ -128,11 +132,11 @@ def plot_slice(filepath, quantity, slice_index, axis, ax=None, **kwargs):
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
 
-def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
+def plot_hybrid_slice(filepath, a, b , quantity, pot_setting, ax=None, **kwargs):
     """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
     `a` et `b` paramétrisent la droite selon laquelle on veut faire une coupe
     """
-    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity, pot_setting)
 
     # Extraction d'information
     time = time = get_time(filepath, params)
@@ -174,9 +178,9 @@ def plot_hybrid_slice(filepath, a, b , quantity, ax=None, **kwargs):
         ax.set_ylabel(ylabel)
         plt.show()
 
-def plot_mean_profile(filepath, quantity, axis, ax=None, **kwargs):
+def plot_mean_profile(filepath, quantity, axis, pot_setting, ax=None, **kwargs):
     """Trace le profil de la quantité `quantity` moyenne selon un axe"""
-    data, params, f, quantity, title, ylabel = selecter(filepath, quantity)
+    data, params, f, quantity, title, ylabel = selecter(filepath, quantity, pot_setting)
 
     # Axe des abscisse
     if axis == 0:
@@ -213,11 +217,11 @@ def plot_mean_profile(filepath, quantity, axis, ax=None, **kwargs):
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
 
-def plot_2d(filepath, quantity, ax=None, **kwargs):
+def plot_2d(filepath, quantity, pot_setting, ax=None, **kwargs):
     """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
 
-    data, params, f, quantity, title, _ = selecter(filepath, quantity)
+    data, params, f, quantity, title, _ = selecter(filepath, quantity, pot_setting)
 
     dset_x = f['x'][:]
     dset_y = f['y'][:]
@@ -249,24 +253,25 @@ def plot_energy(filepath):
     f = h5py.File(filepath, 'r')
     params = extract_parameter(f['metadata'])
 
-    time = f['time'][:]
+    time_axis = f['time'][:]
     ekin_x = f['ekin x'][:]
     ekin_y = f['ekin y'][:]
 
-    name = f['metadata'].attrs.get("name")
-    time = get_time(filepath, params)
+    name = params[p_name]
+    time = None
 
     fig, ax = plt.subplots(1, 1)
     fig.suptitle("{0} | évolution sur {1} s".format(name, time))
     
-    ax.semilogy(time, ekin_x, '--b', label="selon x")
-    ax.semilogy(time, ekin_y, 'b', label="selon y")
+    ax.semilogy(time_axis, ekin_x, '--b', label="selon x")
+    ax.semilogy(time_axis, ekin_y, 'b', label="selon y")
     ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
     ax.legend()
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/layer/'
-    plot_mean_profile(file + 'save_30', 'Tpot', 1)
-
+    file = './out/in_between_same_shear/'
+    #plot_2d(file + 'save_39', 'Tpots', pot_setting=(2, 1, -1))
+    #plot_mean_profile(file + 'save_80', 'Tpots', 1, pot_setting=(2, 1, -0.5))
+    plot_energy(file+'energies.h5')
     

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import get_pressure_from_temp, periodic, closed, reflex, neumann, primitive_into_conservative
+from utils import get_pressure_from_temp, periodic, closed, reflex, neumann, primitive_into_conservative, get_potential_temp, get_modified_potential_temp
 import matplotlib.pyplot as plt
 
 p_gamma = 0 # Pour le tuple des paramètres
@@ -303,7 +303,7 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
     U = primitive_into_conservative(Q, params)
     return U, T
 
-def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
+def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd=1):
     """Donne les conditions initiales d'un problème de diffusion basique:
     équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
     **Input**
@@ -369,57 +369,52 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd = 1):
     U = primitive_into_conservative(Q, params)
     return U, T
 
-def stairs(params, gradT, T_grd, breakpoint, rho0, C, kx):
+def layer(params, gradT, T_grd, rho_grd, start_shear, gradshear, C, kx, ky):
     """Génère les conditions initiale en suivant le papier 'Extremely long phase transition [...]' 
     `gradT` fixe le gradient de température haut - bas
     `T_grd` fixe la température en bas de la boîte
-    `breakpoint` fixe le pointe de rupture pour le graphe de la température
-    `rho0` fixe la densité en haut de la boîte
-    La pression est déterminée directement avec le profil de température 
+    `rho_grd` fixe la densité en bas de la boîte
+    `start_shear` fixe là où commence le gradient de shear
+    `gradshear` fixe le gradient de shear appliqué uniquement sur la partie haute de la boîte
+    `C` fixe l'intensité de la perturbation
+    `kx` fixe le nombre de maxima du mode spatial de perturbation
     """
     nx = params[p_nx]
     ny = params[p_ny]
     Ly = params[p_Ly]
+    Lx = params[p_Lx]
     dy = Ly / ny
+    dx = Lx / nx
 
     # Initialisation de la température
-    T_up = T_grd + Ly * gradT
-    T_moy = 0.5 * (T_grd + T_up)
-    #gradT_low = gradT/4
-    #gradT_high = 4 * gradT
-    T = np.zeros((nx+2, ny+2), dtype=float)
-    T[:, 0] = T_grd + C * np.sin(np.linspace(0, kx * np.pi, nx+2))
-    T[:, ny+1] = T_up
-    for i in range(1, nx+1):
-        for j in range(1, ny+1):
-            y = (j - 0.5) * dy
-            T[i, j] = 3 *(Ly - y) + T_up
+    T = np.ones((nx+2, ny+2)) * T_grd - gradT * dy
+    for j in range(1, ny+2):
+        T[:, j] = T[:, j-1] + gradT * dy
+    T[:, 0] = T_grd
+    T[:, ny+1] = T[:, ny]
 
     # Initialisation des variables de description du fluide
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
-    Q[:, 1, 0] = rho0
-    Q[:, 1, 1] = get_pressure_from_temp(rho0, T[:, 1], params)
+    Q[:, 1, 0] = rho_grd
+    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params)
+    Q[:, 1, 2] = gradshear * (Ly - start_shear - 0.5*dy)
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
-
     for i in range(1, nx+1):
         for j in range(2, ny+1):
+            y = (j-0.5) * dy
+            x = (i-0.5) * dx
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
             Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
-    
-    """
-    for i in range(1, nx+1):
-        for j in range(1, ny+1):
-            y = (j-0.5) * dy
-            if y <= breakpoint * Ly:
-                T[i, j] = T_grd + gradT_low * y
-            else:
-                T[i, j] = T_grd + 0.2 * gradT + gradT_high * (y - 0.8)
+            Q[i, j, 3] =  C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly)
 
-            Q[i, j, 0] = rho0 + 0.01 * rho0 * (Ly - y)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
-    """
-    
+            if y > start_shear:
+                Q[i, j, 2] = gradshear * (y - start_shear)
+            elif y < Ly - start_shear:
+                Q[i, j, 2] = gradshear * (Ly - start_shear - y)
+            else:
+                Q[i, j, 2] = -0.1
+
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
@@ -428,24 +423,30 @@ def stairs(params, gradT, T_grd, breakpoint, rho0, C, kx):
         reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
         closed(Q, params, is_conservative=False)
-    
+
+    # Plot
+    y = np.arange(0, ny+2)
+    potT = get_potential_temp(Q[:, :, 1], Q[:, :, 0], params)
+    potTshear = get_modified_potential_temp(Q[:, :, 1], Q[:, :, 0], Q[:, :, 2], params, kx, ky, params[p_ht] - kx*kx*params[p_k])
+
     fig, ax = plt.subplots(1, 5, figsize=(17, 4))
     fig.suptitle("Conditions initiales")
     ax[0].pcolormesh(Q[:, :, 0].T)
     ax[1].pcolormesh(Q[:, :, 1].T)
     ax[2].pcolormesh(Q[:, :, 2].T)
     ax[3].pcolormesh(Q[:, :, 3].T)
-    ax[4].pcolormesh(T.T)
+    ax[4].plot(np.mean(potT, axis=0), y, '--b', label="Température potentielle")
+    ax[4].plot(np.mean(potTshear, axis=0), y , 'b', label="Température potentielle modifiée")
     ax[0].set_title("Densité")
     ax[1].set_title("Pression")
     ax[2].set_title("Vitesse x")
     ax[3].set_title("Vitesse y")
-    ax[4].set_title("Température")
+    ax[4].set_title("Températures")
+    ax[4].legend()
     ax[0].set_aspect('equal', adjustable='box')
     ax[1].set_aspect('equal', adjustable='box')
     ax[2].set_aspect('equal', adjustable='box')
     ax[3].set_aspect('equal', adjustable='box')
-    ax[4].set_aspect('equal', adjustable='box')
     plt.show()
 
     U = primitive_into_conservative(Q, params)

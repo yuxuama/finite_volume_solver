@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import Normalize
-from utils import extract_parameter, get_temp_from_pressure, get_potential_temp
+from utils import extract_parameter, get_temp_from_pressure, get_potential_temp, get_modified_potential_temp
 import h5py
 import os
 
@@ -131,6 +131,49 @@ def animate_temperature(dirpath, potential=False, frames=None, rest_time=200, **
     ani = FuncAnimation(fig, animate, frames=frames, interval=rest_time, blit=True, repeat=False)
     return ani
 
+def animate_profile_temperature(dirpath, quantity, pot_settings=(), frames=None, rest_time=200, **kwargs):
+    """Anime le profil de température"""
+    files = [dirpath + f for f in os.listdir(dirpath)]
+    files.sort()
+
+    if frames is None:
+        frames = len(files) - 1
+
+    params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
+
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    T_end = params[p_T_end]
+    freq = 1/params[p_T_io]
+
+    y = np.linspace(0, Ly, ny)
+
+    fig, ax = plt.subplots(1, 1)
+    f1 = h5py.File(files[1], 'r')
+    place_holder = get_modified_potential_temp(f1['pressure'][:], f1['rho'][:], f1['speed x'][:], params, *pot_settings)
+    line, = ax.plot(np.mean(place_holder, axis=1), y, **kwargs)
+    ax.set(title=f"Temperature potentielle modifée sur {T_end} s @ f_io = {freq} Hz",
+           xlabel="Température",
+           ylabel="$y$",
+           adjustable="box",
+    )
+    def animate(frame):
+        f = h5py.File(files[frame+1], 'r')
+        press = f['pressure'][:]
+        rho =  f['rho'][:]
+        u = f['speed x'][:]
+        temperature = get_modified_potential_temp(press, rho, u, params, *pot_settings)
+        line.set_xdata(np.mean(temperature, axis=1))
+        if frame == frames-1:
+            print("Animation terminée")
+        return line,
+    
+    ani = FuncAnimation(fig, animate, frames=frames, interval=rest_time, blit=True, repeat=False)
+    return ani
+
 if __name__ == '__main__':
-    ani = animate_quantity('./out/layer/', "rho", cmap='plasma', shading='auto')
+    dir = './out/layer/'
+    #ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
+    ani = animate_quantity(dir, 'v', cmap='coolwarm', shading='auto')
+    #ani = animate_profile_temperature(dir, '', (2, 1, -0.01))
     plt.show()
