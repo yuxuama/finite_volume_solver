@@ -2,6 +2,7 @@ from numba import njit, prange
 import numpy as np
 import h5py
 import os
+import matplotlib.pyplot as plt
 
 i_mass = 0 # Pour les tableaux de grandeurs conservatives
 i_momx = 1
@@ -303,3 +304,38 @@ def closed(Q, params, is_conservative=True):
 
     if is_conservative:
         return primitive_into_conservative(Q, params)
+
+# Data vizualisation
+
+def compute_omega(speed_x, pressure, rho, i, kx, kz, params):
+    """Calcule le taux de montée à l'aide du polynome obtenue en linéarisant les équations dans
+    l'approximation de Boussinesq"""
+
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    dz = Ly / ny
+
+    # Data
+
+    u = speed_x
+    theta_mod = np.log(get_modified_potential_temp(pressure, rho, u, params, kx, kz, params[p_ht]))
+    
+    # Selection de la bonne altitude
+    
+    if i != 0 and i != ny-1:
+        theta_mod = 0.5 * np.mean(theta_mod[i+1, :] - theta_mod[i-1, :]) / dz
+        u = 0.5 * np.mean(u[i+1,:] - u[i-1,:]) / dz
+    elif i == 0:
+        theta_mod = np.mean(theta_mod[:,i+1] - theta_mod[:,i]) / dz
+        u = np.mean(u[i+1, :] - u[i, :]) / dz
+    elif i == ny-1:
+        theta_mod = np.mean(theta_mod[:,i] - theta_mod[:,i-1]) / dz
+        u = np.mean(u[i, :] - u[i-1, :]) / dz
+    
+    # Calcul de omega
+    a1 = - params[p_ht] + kx * kz * np.abs(u) / (kx**2 + kz**2)
+    a0 = kx*kx * params[p_g] * theta_mod / (kx**2 + kz**2)
+    delta = a1**2 - 4 * a0
+
+    
+    return 0.5 * (-a1 + np.sqrt(delta))

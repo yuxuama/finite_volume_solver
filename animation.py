@@ -175,5 +175,6 @@ if __name__ == '__main__':
     dir = './out/layer/'
     #ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
     ani = animate_quantity(dir, 'v', cmap='coolwarm', shading='auto')
-    #ani = animate_profile_temperature(dir, '', (2, 1, -0.01))
+    #ani = animate_profile_temperature(dir, '', (1, 1, -0.01))
     plt.show()
+   

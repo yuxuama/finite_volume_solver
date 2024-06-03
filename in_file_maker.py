@@ -1,6 +1,7 @@
 import numpy as np
 from utils import get_pressure_from_temp, periodic, closed, reflex, neumann, primitive_into_conservative, get_potential_temp, get_modified_potential_temp
 import matplotlib.pyplot as plt
+from test import grad_shear_th
 
 p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
@@ -369,7 +370,7 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd=1):
     U = primitive_into_conservative(Q, params)
     return U, T
 
-def layer(params, gradT, T_grd, rho_grd, start_shear, gradshear, C, kx, ky):
+def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky):
     """Génère les conditions initiale en suivant le papier 'Extremely long phase transition [...]' 
     `gradT` fixe le gradient de température haut - bas
     `T_grd` fixe la température en bas de la boîte
@@ -397,7 +398,7 @@ def layer(params, gradT, T_grd, rho_grd, start_shear, gradshear, C, kx, ky):
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
     Q[:, 1, 0] = rho_grd
     Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params)
-    Q[:, 1, 2] = gradshear * (Ly - start_shear - 0.5*dy)
+    Q[:, 1, 2] = gradshear * 0.5 * dy
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
     for i in range(1, nx+1):
@@ -406,14 +407,8 @@ def layer(params, gradT, T_grd, rho_grd, start_shear, gradshear, C, kx, ky):
             x = (i-0.5) * dx
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
             Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+            Q[i, j, 2] = gradshear * y
             Q[i, j, 3] =  C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly)
-
-            if y > start_shear:
-                Q[i, j, 2] = gradshear * (y - start_shear)
-            elif y < Ly - start_shear:
-                Q[i, j, 2] = gradshear * (Ly - start_shear - y)
-            else:
-                Q[i, j, 2] = -0.1
 
     if params[p_BC] == 'periodic':
         periodic(Q, nx, ny)
@@ -429,7 +424,9 @@ def layer(params, gradT, T_grd, rho_grd, start_shear, gradshear, C, kx, ky):
     potT = get_potential_temp(Q[:, :, 1], Q[:, :, 0], params)
     potTshear = get_modified_potential_temp(Q[:, :, 1], Q[:, :, 0], Q[:, :, 2], params, kx, ky, params[p_ht] - kx*kx*params[p_k])
 
-    fig, ax = plt.subplots(1, 5, figsize=(17, 4))
+    #print(grad_shear_th(Q, params, kx, ky, start_shear))
+
+    fig, ax = plt.subplots(1, 5, figsize=(19, 4))
     fig.suptitle("Conditions initiales")
     ax[0].pcolormesh(Q[:, :, 0].T)
     ax[1].pcolormesh(Q[:, :, 1].T)

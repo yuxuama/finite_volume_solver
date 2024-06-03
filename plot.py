@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from utils import extract_parameter, get_temp_from_pressure, get_potential_temp, get_modified_potential_temp
+from utils import extract_parameter, get_temp_from_pressure, get_potential_temp, get_modified_potential_temp, compute_omega
 
 p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
@@ -19,6 +19,8 @@ p_T_io = 12
 p_name = 13
 p_out = 14
 
+DATA = h5py.File('./out/layer/save_00', 'r')['speed x'][:]
+
 def selecter(filename, quantity, pot_settings):
     """A partir de la quantité que l'on veut afficher renvoie les bonnes données à passer aux
     fonctions de plot"""
@@ -34,7 +36,7 @@ def selecter(filename, quantity, pot_settings):
     elif quantity == 'u':
         quantity = "speed x"
         title = "Vitesse en horizontale"
-        ylabel = "Densité ($kg.m^{-3}$)"
+        ylabel = "Vitesse ($m.s$)"
         data = f[quantity][:]
     elif quantity == 'v':
         quantity = "speed y"
@@ -263,15 +265,40 @@ def plot_energy(filepath):
     fig, ax = plt.subplots(1, 1)
     fig.suptitle("{0} | évolution sur {1} s".format(name, time))
     
-    ax.semilogy(time_axis, ekin_x, '--b', label="selon x")
-    ax.semilogy(time_axis, ekin_y, 'b', label="selon y")
+    ax.semilogy(time_axis, np.abs(ekin_x - ekin_x[0]), '--b', label="selon x")
+    ax.semilogy(time_axis, np.abs(ekin_y - ekin_y[0]), 'b', label="selon y")
     ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
     ax.legend()
     plt.show()
 
-if __name__ == "__main__":
-    file = './out/in_between_same_shear/'
-    #plot_2d(file + 'save_39', 'Tpots', pot_setting=(2, 1, -1))
-    #plot_mean_profile(file + 'save_80', 'Tpots', 1, pot_setting=(2, 1, -0.5))
-    plot_energy(file+'energies.h5')
+def plot_omega(filepath, kx, kz):
+    """Trace le profil du taux de montée"""
+
+    f = h5py.File(filepath, 'r')
+    params = extract_parameter(f['metadata'])
+    Ly = params[p_Ly]
+    ny = params[p_ny]
+
+    u = f['speed x'][:]
+    pressure = f['pressure'][:]
+    rho = f['rho'][:]
     
+    omega = np.zeros(ny)
+
+    for i in range(ny):
+        omega[i] = compute_omega(u, pressure, rho, i, kx, kz, params)
+    
+    # plot
+    z = np.linspace(0, Ly, ny)
+
+    plt.plot(omega, z)
+    plt.xlabel('$\omega$')
+    plt.ylabel('$y$')
+    plt.title("Profil du taux de croissance moyen de l'instabilité")
+    plt.show()
+
+if __name__ == "__main__":
+    file = './out/forced_convection_sheared_square/'
+    plot_energy(file+'energies.h5')
+    #plot_omega(file + 'save_10', 1, 0.25)
+    #plot_mean_profile(file + "save_20", 'v', 1, pot_setting=None)
