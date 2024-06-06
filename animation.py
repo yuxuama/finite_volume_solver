@@ -43,10 +43,9 @@ def animate_quantity(dirpath, quantity, frames=None, rest_time=200, **kwargs):
     files.sort()
     
     if frames is None:
-        frames = len(files) - 1
+        frames = len(files) - 2
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
-
     nx = params[p_nx]
     ny = params[p_ny]
     Lx = params[p_Lx]
@@ -60,7 +59,7 @@ def animate_quantity(dirpath, quantity, frames=None, rest_time=200, **kwargs):
     x, y = np.meshgrid(x, y)
 
     fig, ax = plt.subplots(1, 1)
-    mesh = ax.pcolormesh(x, y, h5py.File(files[1], 'r')[quantity][:], **kwargs)
+    mesh = ax.pcolormesh(x, y, h5py.File(files[2], 'r')[quantity][:], **kwargs)
     ax.set(title=f"{title} sur {T_end} s @ f_io = {freq} Hz",
            xlabel="$x$",
            ylabel="$y$"
@@ -69,9 +68,9 @@ def animate_quantity(dirpath, quantity, frames=None, rest_time=200, **kwargs):
 
     def animate(frame): 
         data = h5py.File(files[frame+1], 'r')[quantity][:]
-        mesh.set_array(data)
+        mesh.set_array(data.flatten())
         mesh.set_norm(Normalize(vmin=np.min(data), vmax=np.max(data)))
-        if frame == frames-1:
+        if frame == frames-2:
             print("Animation terminée")
         return mesh,
     
@@ -86,7 +85,7 @@ def animate_temperature(dirpath, potential=False, frames=None, rest_time=200, **
     files.sort()
 
     if frames is None:
-        frames = len(files) - 1
+        frames = len(files) - 2
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
 
@@ -108,7 +107,7 @@ def animate_temperature(dirpath, potential=False, frames=None, rest_time=200, **
         selecter = get_temp_from_pressure
 
     fig, ax = plt.subplots(1, 1)
-    f1 = h5py.File(files[1], 'r')
+    f1 = h5py.File(files[2], 'r')
     place_holder = selecter(f1['pressure'][:], f1['rho'][:], params)
     mesh = ax.pcolormesh(x, y, place_holder, **kwargs)
     ax.set(title=f"Temperature sur {T_end} s @ f_io = {freq} Hz",
@@ -118,11 +117,11 @@ def animate_temperature(dirpath, potential=False, frames=None, rest_time=200, **
     ax.set_aspect('equal', adjustable='box')
     
     def animate(frame):
-        f = h5py.File(files[frame+1], 'r')
+        f = h5py.File(files[frame+2], 'r')
         press = f['pressure'][:]
         rho =  f['rho'][:]
         temperature = selecter(press, rho, params)
-        mesh.set_array(temperature)
+        mesh.set_array(temperature.flatten())
         mesh.set_norm(Normalize(vmin=np.min(temperature), vmax=np.max(temperature)))
         if frame == frames-1:
             print("Animation terminée")
@@ -131,13 +130,15 @@ def animate_temperature(dirpath, potential=False, frames=None, rest_time=200, **
     ani = FuncAnimation(fig, animate, frames=frames, interval=rest_time, blit=True, repeat=False)
     return ani
 
-def animate_profile_temperature(dirpath, quantity, pot_settings=(), frames=None, rest_time=200, **kwargs):
-    """Anime le profil de température"""
+def animate_profile_potential_temperature(dirpath, xlim=None,frames=None, rest_time=200, **kwargs):
+    """Anime le profil de température
+    Pour le moment ne fait que la température potentielle modifiée
+    """
     files = [dirpath + f for f in os.listdir(dirpath)]
     files.sort()
 
     if frames is None:
-        frames = len(files) - 1
+        frames = len(files) - 2
 
     params = extract_parameter(h5py.File(files[0], 'r')['metadata'])
 
@@ -149,21 +150,25 @@ def animate_profile_temperature(dirpath, quantity, pot_settings=(), frames=None,
     y = np.linspace(0, Ly, ny)
 
     fig, ax = plt.subplots(1, 1)
-    f1 = h5py.File(files[1], 'r')
-    place_holder = get_modified_potential_temp(f1['pressure'][:], f1['rho'][:], f1['speed x'][:], params, *pot_settings)
+    f1 = h5py.File(files[2], 'r')
+    place_holder = get_potential_temp(f1['pressure'][:], f1['rho'][:], params)
     line, = ax.plot(np.mean(place_holder, axis=1), y, **kwargs)
-    ax.set(title=f"Temperature potentielle modifée sur {T_end} s @ f_io = {freq} Hz",
+    ax.set(title=f"Temperature potentielle sur {T_end} s @ f_io = {freq} Hz",
            xlabel="Température",
            ylabel="$y$",
            adjustable="box",
     )
+    if xlim is not None:
+        ax.set_xlim(xlim)
+
+
     def animate(frame):
-        f = h5py.File(files[frame+1], 'r')
+        f = h5py.File(files[frame+2], 'r')
         press = f['pressure'][:]
         rho =  f['rho'][:]
-        u = f['speed x'][:]
-        temperature = get_modified_potential_temp(press, rho, u, params, *pot_settings)
-        line.set_xdata(np.mean(temperature, axis=1))
+        temperature = get_potential_temp(press, rho, params)
+        temperature = np.mean(temperature, axis=1)
+        line.set_xdata(temperature)
         if frame == frames-1:
             print("Animation terminée")
         return line,
@@ -172,9 +177,8 @@ def animate_profile_temperature(dirpath, quantity, pot_settings=(), frames=None,
     return ani
 
 if __name__ == '__main__':
-    dir = './out/layer/'
-    #ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
-    ani = animate_quantity(dir, 'v', cmap='coolwarm', shading='auto')
-    #ani = animate_profile_temperature(dir, '', (1, 1, -0.01))
+    dir = './out/test/'
+    ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
+    #ani = animate_quantity(dir, 'p', cmap='coolwarm', shading='auto')
+    #ani = animate_profile_potential_temperature(dir)
     plt.show()
-   

@@ -250,8 +250,10 @@ def plot_2d(filepath, quantity, pot_setting, ax=None, **kwargs):
         ax.set_ylabel('$y$')        
         plt.show()
 
-def plot_energy(filepath):
-    """Trace les diagrammes d'énergie"""
+def plot_energy(filepath, diff=bool):
+    """Trace les diagrammes d'énergie
+    Si `diff` est `True` alors trace l'énergie moins l'énergie initiale en valeur absolue
+    """
     f = h5py.File(filepath, 'r')
     params = extract_parameter(f['metadata'])
 
@@ -265,8 +267,12 @@ def plot_energy(filepath):
     fig, ax = plt.subplots(1, 1)
     fig.suptitle("{0} | évolution sur {1} s".format(name, time))
     
-    ax.semilogy(time_axis, np.abs(ekin_x - ekin_x[0]), '--b', label="selon x")
-    ax.semilogy(time_axis, np.abs(ekin_y - ekin_y[0]), 'b', label="selon y")
+    if diff:
+        ekin_x = np.abs(ekin_x - ekin_x[0])
+        ekin_y = np.abs(ekin_y - ekin_y[0])
+
+    ax.semilogy(time_axis, ekin_x, '--b', label="selon x")
+    ax.semilogy(time_axis, ekin_y, 'b', label="selon y")
     ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
     ax.legend()
     plt.show()
@@ -298,7 +304,7 @@ def plot_omega(filepath, kx, kz):
     plt.show()
 
 if __name__ == "__main__":
-    file = './out/forced_convection_sheared_square/'
-    plot_energy(file+'energies.h5')
+    file = './out/convection_diffusion/'
+    plot_energy(file+'energies.h5', diff=False)
     #plot_omega(file + 'save_10', 1, 0.25)
-    #plot_mean_profile(file + "save_20", 'v', 1, pot_setting=None)
+    #plot_mean_profile(file + "save_15", 'v', 1, pot_setting=None)

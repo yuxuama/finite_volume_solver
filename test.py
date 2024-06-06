@@ -16,7 +16,7 @@ def conservation(dirpath, quantity, dS):
     first_value = 0
     quantity_sum = []
 
-    for i in range(1, len(files)): # On commence à 1 pour éviter le fichier des énergies
+    for i in range(2, len(files)): # On commence à 1 pour éviter le fichier des énergies
         data = h5py.File(files[i], 'r')[quantity][:]
         temp = np.sum(data) * dS
         if i == 1:

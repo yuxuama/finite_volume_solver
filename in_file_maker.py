@@ -1,7 +1,8 @@
 import numpy as np
-from utils import get_pressure_from_temp, periodic, closed, reflex, neumann, primitive_into_conservative, get_potential_temp, get_modified_potential_temp
+import utils as u
 import matplotlib.pyplot as plt
-from test import grad_shear_th
+from os import rename, listdir
+import h5py
 
 p_gamma = 0 # Pour le tuple des paramètres
 p_g = 1
@@ -47,18 +48,18 @@ def sod_shock_tube(params, direction):
                 Q[i, j] *= low 
 
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
 
     plt.pcolormesh(Q[1:nx+1,1:ny+1,0])
     plt.show()
 
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
     
     return U, None
     
@@ -96,16 +97,16 @@ def riemann_problem_2d(params):
                     Q[i, j] *= top_right
             
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
     
     
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
 
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -121,7 +122,7 @@ def riemann_problem_2d(params):
 
     return U, None
 
-def rt_instability(params, C=0):
+def rt_instability(params, C):
     """Créer le fichier des conditions initiale pour les paramètres donnés
     et pour le problème de l'instabilité de Rayleigh-Taylor
     `C` est l'amplitude de la perturbation de l'équilibre hydrostatique
@@ -153,13 +154,13 @@ def rt_instability(params, C=0):
             Q[i, j, 3] = 0.25 * C * (1 + np.cos(4 * np.pi * (x - 0.5 * Lx))) * (1 + np.cos(3 * np.pi * (y - 0.5 * Ly)))
      
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -177,12 +178,12 @@ def rt_instability(params, C=0):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    U =  primitive_into_conservative(Q, params)
+    U =  u.primitive_into_conservative(Q, params)
     return U, None
 
 def hydrostatic(params):
     """Créer le fichier des conditions initiales pour un cas hydrostatique
-    en fonction des paramètres donnés"""
+    en fonction des paramètres `params` donnés"""
     nx = params[p_nx]
     ny = params[p_ny]
     Lx = params[p_Lx]
@@ -208,13 +209,13 @@ def hydrostatic(params):
             Q[i, j, 1] = Q[i, j-1, 1] - dy * params[p_g] * 0.5 * (Q[i, j-1, 0] + Q[i, j, 0])
      
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle("Conditions initiales")
@@ -232,10 +233,10 @@ def hydrostatic(params):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
     return U, None
 
-def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
+def simple_convection(params, gradT, T_grd, rho_grd, C, kx, ky):
     """Calcul la condition initiale pour un problème de convection basique
     `gradT` fixe le gradient de température vertical
     `rho_grd` fixe la valeur de la densité en bas de la boîte
@@ -260,7 +261,7 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
 
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
     Q[:, 1, 0] = rho_grd # Masse tout en bas
-    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params) # Pression tout en bas
+    Q[:, 1, 1] = u.get_pressure_from_temp(rho_grd, T[:, 1], params) # Pression tout en bas
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
 
@@ -271,16 +272,16 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
             Q[i, j, 3] = C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly) # Perturbation de la vitesse verticale
 
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params) 
+            Q[i, j, 1] = u.get_pressure_from_temp(Q[i, j, 0], T[i, j], params) 
 
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
 
     fig, ax = plt.subplots(1, 5, figsize=(17, 4))
     fig.suptitle("Conditions initiales")
@@ -301,10 +302,10 @@ def simple_convection(params, gradT=0, T_grd=0, rho_grd=1, C=0, kx=0, ky=0):
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
     
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
     return U, T
 
-def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd=1):
+def simple_diffusion(params, Tdown, Tup, C, kx, rho_grd):
     """Donne les conditions initiales d'un problème de diffusion basique:
     équilibre hydrostatique + thermostat froid en haut et thermostat chaud en bas
     **Input**
@@ -330,23 +331,23 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd=1):
 
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
     Q[:, 1, 0] = rho_grd
-    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params)
+    Q[:, 1, 1] = u.get_pressure_from_temp(rho_grd, T[:, 1], params)
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
 
     for i in range(1, nx+1):
         for j in range(2, ny+1):
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+            Q[i, j, 1] = u.get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
      
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
     
     fig, ax = plt.subplots(1, 5, figsize=(17, 4))
     fig.suptitle("Conditions initiales")
@@ -367,7 +368,7 @@ def simple_diffusion(params, Tdown=0, Tup=0, C=0, kx=0, rho_grd=1):
     ax[4].set_aspect('equal', adjustable='box')
     plt.show()
 
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
     return U, T
 
 def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky):
@@ -397,8 +398,7 @@ def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky
     # Initialisation des variables de description du fluide
     Q = np.zeros((nx+2, ny+2, 4), dtype=float)
     Q[:, 1, 0] = rho_grd
-    Q[:, 1, 1] = get_pressure_from_temp(rho_grd, T[:, 1], params)
-    Q[:, 1, 2] = gradshear * 0.5 * dy
+    Q[:, 1, 1] = u.get_pressure_from_temp(rho_grd, T[:, 1], params)
 
     a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
     for i in range(1, nx+1):
@@ -406,23 +406,27 @@ def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky
             y = (j-0.5) * dy
             x = (i-0.5) * dx
             Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
-            Q[i, j, 1] = get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
-            Q[i, j, 2] = gradshear * y
+            Q[i, j, 1] = u.get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
             Q[i, j, 3] =  C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly)
+            
+            if y > center - thickness and y < center:
+                Q[i, j, 2] = gradshear * (y - center + thickness) 
+            elif y >= center and y < center + thickness:
+                Q[i, j, 2] = gradshear * (center + thickness - y)       
 
     if params[p_BC] == 'periodic':
-        periodic(Q, nx, ny)
+        u.periodic(Q, nx, ny)
     elif params[p_BC] == 'neumann':
-        neumann(Q, nx, ny)
+        u.neumann(Q, nx, ny)
     elif params[p_BC] == 'reflex':
-        reflex(Q, params, is_conservative=False)
+        u.reflex(Q, params, is_conservative=False)
     elif params[p_BC] == 'closed':
-        closed(Q, params, is_conservative=False)
+        u.closed(Q, params, is_conservative=False)
 
     # Plot
     y = np.arange(0, ny+2)
-    potT = get_potential_temp(Q[:, :, 1], Q[:, :, 0], params)
-    potTshear = get_modified_potential_temp(Q[:, :, 1], Q[:, :, 0], Q[:, :, 2], params, kx, ky, params[p_ht] - kx*kx*params[p_k])
+    potT = u.get_potential_temp(Q[:, :, 1], Q[:, :, 0], params)
+    potTshear = u.get_modified_potential_temp(Q[:, :, 1], Q[:, :, 0], Q[:, :, 2], params, kx, ky, params[p_ht] - kx*kx*params[p_k])
 
     #print(grad_shear_th(Q, params, kx, ky, start_shear))
 
@@ -432,8 +436,8 @@ def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky
     ax[1].pcolormesh(Q[:, :, 1].T)
     ax[2].pcolormesh(Q[:, :, 2].T)
     ax[3].pcolormesh(Q[:, :, 3].T)
-    ax[4].plot(np.mean(potT, axis=0), y, '--b', label="Température potentielle")
-    ax[4].plot(np.mean(potTshear, axis=0), y , 'b', label="Température potentielle modifiée")
+    ax[4].plot(np.mean(potTshear, axis=0), y , '--g', label="Température potentielle modifiée")
+    ax[4].plot(np.mean(potT, axis=0), y, 'b', label="Température potentielle")
     ax[0].set_title("Densité")
     ax[1].set_title("Pression")
     ax[2].set_title("Vitesse x")
@@ -446,5 +450,166 @@ def layer(params, gradT, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky
     ax[3].set_aspect('equal', adjustable='box')
     plt.show()
 
-    U = primitive_into_conservative(Q, params)
+    U = u.primitive_into_conservative(Q, params)
     return U, T
+
+def diffusive_layer(params, T_up, T_grd, rho_grd, center, thickness, gradshear, C, kx, ky, shock_limit=0):
+    """Créer les conditions initiales pour un problème de confinement de convection par diffusion
+    `params` ce sont les paramètres de la simulation définis par le fichier .ini
+    `T_up` Température en haut de la boîte
+    `T_grd` Température en bas de la boîte
+    `rho_grd` Densité volumique de fluide en bas de la boîte
+    `center` Centre de la barrière de shear horizontale
+    `thickness` DEmi-hauter de la barrière de shear
+    `gradshear` gradient de shear dans la barrière de shear
+    `C` amplitude de la perturbation
+    `kx` Nombre de maxima de la perturbation sinusoïdale selon x
+    `ky` Nombre de maxima de la perturbation sinusoïdale selon y
+    `shock_limit` Tolérance sur l'amplitude de l'onde de shock issue de la discontinuité de température (si =0 pas pris en compte)
+    """
+    nx = params[p_nx]
+    ny = params[p_ny]
+    Ly = params[p_Ly]
+    Lx = params[p_Lx]
+    dy = Ly / ny
+    dx = Lx / nx
+
+    # Initialisation de la température
+    T = np.ones((nx+2, ny+2)) * T_up
+    T[:, 0] = T_grd
+    T[:, ny+1] = T_up
+    # On ajoute une petite zone de gradient thermique pour permettre la 'continuité' de la température
+    # On cherche à éviter les gros shock
+    gradT_cible = -shock_limit / (params[p_k] * params[p_cv] * ny) # Car odg perturbation = k * delta T * cv
+    
+    if shock_limit > 0:
+        if T_grd + gradT_cible * ny > T_up:
+            gradT_cible = (T_up - T_grd) / ny
+            print("\n/!\ WARNING: l'onde de choc risque d'être trop puissante par rapport à la perturbation")
+        print("DEBUG: Valeur prise pour le gradient de température:", gradT_cible, end='\n\n')
+        ntot = np.abs((T_up - T_grd) / gradT_cible)
+        ntot = int(ntot)
+        for j in range(1, ntot+1):
+            T[:, j] = T[:, j-1] + gradT_cible
+
+    # Initialisation des variables de description du fluide
+    Q = np.zeros((nx+2, ny+2, 4), dtype=float)
+    Q[:, 1, 0] = rho_grd
+    Q[:, 1, 1] = u.get_pressure_from_temp(rho_grd, T[:, 1], params)
+    x = (np.arange(nx+2) - 0.5) * dx
+    Q[:, 1, 3] =  C * np.sin(np.pi * kx *  x/ Lx) * np.sin(np.pi * ky * 0.5 * dy / Ly - 0.5 * np.pi)
+
+
+    a = 2 * params[p_cv] * (params[p_gamma] - 1) / (params[p_g] * dy)
+    for i in range(1, nx+1):
+        for j in range(2, ny+1):
+            y = (j-0.5) * dy
+            x = (i-0.5) * dx
+            Q[i, j, 0] = Q[i, j-1, 0] * (T[i, j-1] * a - 1) / (1 + T[i, j] * a)
+            Q[i, j, 1] = u.get_pressure_from_temp(Q[i, j, 0], T[i, j], params)
+            Q[i, j, 3] =  C * np.sin(np.pi * kx * x / Lx) * np.sin(np.pi * ky * y / Ly - 0.5 * np.pi) * np.heaviside(0.5*(Ly / ky) - y, 0)
+            
+            if y > center - thickness and y < center:
+                Q[i, j, 2] = gradshear * (y - center + thickness) 
+            elif y >= center and y < center + thickness:
+                Q[i, j, 2] = gradshear * (center + thickness - y)       
+
+    if params[p_BC] == 'periodic':
+        u.periodic(Q, nx, ny)
+    elif params[p_BC] == 'neumann':
+        u.neumann(Q, nx, ny)
+    elif params[p_BC] == 'reflex':
+        u.reflex(Q, params, is_conservative=False)
+    elif params[p_BC] == 'closed':
+        u.closed(Q, params, is_conservative=False)
+
+    # Plot
+    y = np.arange(ny+2)
+
+    fig, ax = plt.subplots(1, 5, figsize=(19, 4))
+    fig.suptitle("Conditions initiales")
+    ax[0].pcolormesh(Q[:, :, 0].T)
+    ax[1].pcolormesh(Q[:, :, 1].T)
+    ax[2].pcolormesh(Q[:, :, 2].T)
+    ax[3].pcolormesh(Q[:, :, 3].T)
+    ax[4].plot(np.mean(T, axis=0), y)
+    ax[0].set_title("Densité")
+    ax[1].set_title("Pression")
+    ax[2].set_title("Vitesse x")
+    ax[3].set_title("Vitesse y")
+    ax[4].set_title("Profil de Température")
+    ax[4].set(xlabel="Température", ylabel="$y$")
+    ax[0].set_aspect('equal', adjustable='box')
+    ax[1].set_aspect('equal', adjustable='box')
+    ax[2].set_aspect('equal', adjustable='box')
+    ax[3].set_aspect('equal', adjustable='box')
+    plt.show()
+
+    U = u.primitive_into_conservative(Q, params)
+    return U, T
+
+def resume_simulation(dirpath, extra_time):
+    """Continue la simulation avec les mêmes paramètres que ceux contenus dans le répertoire
+    `dirpath` en partant du dernier fichier
+    """
+    files = [dirpath + f for f in listdir(dirpath)]
+    files.sort()
+
+    # Extraction de la dernière frame simulée
+    print("Reprise de la simulation à partir du fichier:", files[-1])
+    last_frame = h5py.File(files[-1], 'r')
+    energies = h5py.File(files[0], 'r')
+    f_T0 = h5py.File(files[1], 'r')
+
+    # Extraction des paramètres liés à la simulation
+    params = u.extract_parameter(last_frame['metadata'])
+    nx = params[p_nx]
+    ny = params[p_ny]
+    t_old = params[p_T_end]
+
+    print("Les paramètres étaient:")
+    params_struct = u.param_struct
+    for i in range(len(params_struct)):
+        print(params_struct[i][0], "=", params[i])
+    print("Le nouveau temps de fin est: ", params[p_T_end] + extra_time)
+
+    # Modification des fichiers existants pour que les métadonnées et les noms de fichier collent
+    nzero_old = int(np.log10(params[p_T_end] / params[p_T_io]))
+    nzero = int(np.log10((params[p_T_end] + extra_time)/params[p_T_io]))    
+    new_params = []
+    for p in range(len(params_struct)):
+        if p == p_T_end:
+            new_params.append(params[p] + extra_time)
+        else:
+            new_params.append(params[p])
+    params = tuple(new_params)
+
+    zero_diff = nzero - nzero_old
+    for i in range(2, len(files)):
+        #f = h5py.File(files[i], 'w')
+        #u.create_all_attribute(f['metadata'], params)
+        if zero_diff > 0:
+            rename(files[i], files[i][0:len(dirpath + 'save_')] + "0"*zero_diff + files[i][len(dirpath + 'save_'):])
+
+    # Construction de U et des énergies
+    U = np.ones((nx+2, ny+2, 4))
+    U[1:nx+1, 1:ny+1, 0] = last_frame['rho'][:].T
+    U[1:nx+1, 1:ny+1, 1] = last_frame['momentum x'][:].T
+    U[1:nx+1, 1:ny+1, 2] = last_frame['momentum y'][:].T
+    U[1:nx+1, 1:ny+1, 3] = last_frame['energy'][:].T
+    T0 = f_T0['temperature'][:]
+
+    if params[p_BC] == 'neumann':
+        u.neumann(U, nx, ny)
+    elif params[p_BC] == 'periodic':
+        u.periodic(U, nx, ny)
+    elif params[p_BC] == 'reflex':
+        U = u.reflex(U, params)
+    elif params[p_BC] == 'closed':
+        U = u.closed(U, params)
+
+    time = list(energies['time'][:])
+    ekin_x = list(energies['ekin x'][:])
+    ekin_y = list(energies['ekin y'][:])
+
+    return U, T0, time, ekin_x, ekin_y, t_old, params

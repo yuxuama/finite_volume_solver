@@ -1,0 +1,34 @@
+# --- Paramètres physiques
+Gamma: 1.4
+g: 1
+ht: 0
+k: 5e-5
+cv: 1
+
+# --- Paramètres de la simulation
+nx: 75
+ny: 75
+Lx: 1
+Ly: 1
+CFL: 0.9
+T end: 10
+T io: 0.5
+
+# --- Conditions aux limites 
+BC: reflex
+
+# --- Conditions initiales
+function: diffusive_layer
+T_up: 1
+T_grd: 1.4
+rho_grd: 1
+center: 1.1
+thickness: 0
+gradshear: 8
+C: 5e-5
+kx: 4
+ky: 2
+
+# --- Paramètres d'enregistrement
+name: Convection avec diffusion
+output dir: test

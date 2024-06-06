@@ -1,17 +1,19 @@
 import numpy as np
 from numba import njit, prange
-from in_file_maker import layer, sod_shock_tube, riemann_problem_2d, rt_instability, hydrostatic, simple_convection, simple_diffusion
+import in_file_maker as ifm
 from utils import *
 import tqdm
 
 func_dict={
-    'sod_shock_tube': sod_shock_tube,
-    'riemann_problem_2d': riemann_problem_2d,
-    'rt_instability': rt_instability,
-    'hydrostatic': hydrostatic,
-    'simple_convection': simple_convection,
-    'simple_diffusion': simple_diffusion,
-    'layer': layer,
+    'sod_shock_tube': ifm.sod_shock_tube,
+    'riemann_problem_2d': ifm.riemann_problem_2d,
+    'rt_instability': ifm.rt_instability,
+    'hydrostatic': ifm.hydrostatic,
+    'simple_convection': ifm.simple_convection,
+    'simple_diffusion': ifm.simple_diffusion,
+    'layer': ifm.layer,
+    'diffusive_layer': ifm.diffusive_layer,
+    'resume simulation': ifm.resume_simulation
 }
 
 # Méthode des volumes finis
@@ -83,17 +85,6 @@ def t(U, i, j, ny, T0, params):
         return T0[i, j]
     return get_temp(U[i, j], params)
 
-@njit
-def ht(params, y):
-    """Renvoie la valeur de ht en fonction de l'altitude z"""
-    y_normalized = y/params[p_Ly]
-    if y_normalized < 0.3:
-        return 0
-    elif y_normalized > 0.8:
-        return params[p_ht]
-    else:
-        return params[p_ht] * (y - 0.3) / 0.5
-
 @njit(parallel=True)
 def inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params):
     """Applique la relation de récurrence au vecteur U"""
@@ -136,44 +127,50 @@ def compute_dt(U, nx, ny, dx, dy, params):
         
 def solve(params, init_function, **kwargs):
     """Applique la méthode des volumes finis pour le problème défini par les paramètres `params`
+    `init_function` est la fonction avec laquelle on initialise les données pour la simulation
     Sauvegarde l'évolution à la fréquence fixée dans les paramètres
     Sauvegarde en calculant *in situ* les énergies cinétiques
     """
-    
-    nx = params[p_nx]
-    ny = params[p_ny]
-
-    # Array des états du système à un instant t et t+dt (shape = (nx, ny, 4))
-    
-    U_old, T0 = func_dict[init_function](params, **kwargs)
+    # Initialisation des données
+    if params is not None:
+        U_old, T0 = func_dict[init_function](params, **kwargs)
+        time = []
+        ekin_x = []
+        ekin_y = []
+        t = 0
+    else:
+        U_old, T0, time, ekin_x, ekin_y, t, params = func_dict[init_function](**kwargs)
     U = np.ones_like(U_old)
 
     # Discretisation de l'espace
+    nx = params[p_nx]
+    ny = params[p_ny]    
     dx = params[p_Lx] / nx
-    dy = params[p_Ly] / ny
-
-    # Calcul de l'évolution
-
-    t = 0 # Temps de la simulation
-    pbar = tqdm.tqdm(total=100) # Progress bar
+    dy = params[p_Ly] / ny   
 
     # Paramètres pour les sorties
-    i = 1
-    total_zeros = int(np.floor(np.log10(params[p_T_end] / params[p_T_io])))
-    time = []
-    ekin_x = []
-    ekin_y = []
+    total_zeros = int(np.log10(params[p_T_end] / params[p_T_io])) + 1
+    i = int(t / params[p_T_io])
+    t0 = t
 
-    # Enregistre les conditions initiales
-    save_u(U_old, params, params[p_out] + "save_" + "0"*(total_zeros+1))
+    # Enregistre les conditions initiales de la simulation
+    if i == 0:
+        save_u(U_old, params, params[p_out] + "save_" + "0"*(total_zeros))
+        time.append(t)
+        ekinx = U_old[:, :, i_momx] ** 2 / U_old[:, :, i_mass]
+        ekin_x.append(np.sum(ekinx))
+        ekiny = U_old[:, :, i_momy] ** 2 / U_old[:, :, i_mass]
+        ekin_y.append(np.sum(ekiny))
 
-    # Boucles principale
+    # Boucle principale
+    pbar = tqdm.tqdm(total=100) # Progress bar
+    i += 1
     while t < params[p_T_end]:
 
         dt = compute_dt(U_old, nx, ny, dx, dy, params)
 
         if i * params[p_T_io] <= t+dt:
-            n_zeros = int(np.floor(np.log10(i)))
+            n_zeros = int(np.floor(np.log10(i))) + 1
             save_u(U, params, params[p_out] + "save_" + "0"*(total_zeros - n_zeros) + f"{i}")
             i += 1
             dt = (i-1) * params[p_T_io] - t
@@ -191,7 +188,7 @@ def solve(params, init_function, **kwargs):
         # Updating U
         inside_loop(U, U_old, T0, dt, dx, dy, nx, ny, params)
         
-
+        # Condition aux bords
         if params[p_BC] == 'neumann':
             neumann(U, nx, ny)
         elif params[p_BC] == 'periodic':
@@ -204,13 +201,17 @@ def solve(params, init_function, **kwargs):
         U_old = U.copy()
         t += dt
 
-        pbar.update(100*dt/ params[p_T_end])
+        pbar.update(100*dt/(params[p_T_end]-t0))
     
     pbar.close()    
     
+    # Sauvegarde des énergies
     time = np.array(time)
     ekin_x = np.array(ekin_x)
     ekin_y = np.array(ekin_y)
 
     labels = ('time', 'ekin x', 'ekin y')
     save(params[p_out] + "energies.h5", (time, ekin_x, ekin_y), params, labels)
+    
+    # Sauvegarde de la température initiale
+    save(params[p_out] + 'init.h5', (T0,), params, ('temperature',))
