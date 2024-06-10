@@ -11,8 +11,8 @@ ny: 75
 Lx: 1
 Ly: 1
 CFL: 0.9
-T end: 10
-T io: 0.5
+T end: 400
+T io: 1
 
 # --- Conditions aux limites 
 BC: reflex
@@ -20,15 +20,15 @@ BC: reflex
 # --- Conditions initiales
 function: diffusive_layer
 T_up: 1
-T_grd: 1.4
+T_grd: 1.6
 rho_grd: 1
-center: 1.1
-thickness: 0
-gradshear: 8
+center: 1
+thickness: 0.6
+gradshear: 5
 C: 5e-5
 kx: 4
 ky: 2
 
 # --- Paramètres d'enregistrement
-name: Convection avec diffusion
-output dir: test
+name: Convection limité par le shear
+output dir: convection_limited

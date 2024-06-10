@@ -65,8 +65,21 @@ def compute_growth_rate(filepath, time_stop):
 
     return popt[1] / 2
 
+def pression_isotherme(z, T, rho_grd, gamma, cv, g):
+    """Renvoie le profil de pression en supposant que c'est isotherme"""
+    P_grd = cv * (gamma - 1) * rho_grd * T
+    return P_grd * np.exp(- g * z / (gamma * cv * T))
 
-
+def predict_plume(T_up, T_down, rho_grd, gamma, cv, g):
+    """Calcule la hauteur des plumes théorique en supposant que le profil de 
+    pression ne change pas au cours du temps (ce qui est plutôt vérifié expérimentatement)
+    On suppose de plus que le logarithme de la température est linéaire (ordre 1)
+    Renvoie également la température potentielle stationnaire prédite par ce modèle
+    """ 
+    L = gamma * cv * T_up * np.log(T_down / T_up) / g
+    pow = (gamma - 1) / gamma
+    Tpot_th = T_up * np.power(pression_isotherme(L, T_up, rho_grd, gamma, cv, g), -pow)
+    return L, Tpot_th
 
 if __name__ == '__main__':
     """
@@ -77,8 +90,8 @@ if __name__ == '__main__':
     my = conservation(dirpath, 'momentum y', dS)
     print(max(mass), max(mx), max(my))
     """
-    dirpath = "./out/layer2/"
-    
-
-
+    T_down = np.linspace(1.2, 4, 200)
+    #plt.plot(T_down, predict_plume(1, T_down, 1, 1.4, 1, 1)[0])
+    #plt.show()    
+    print(predict_plume(1, 1.6, 1, 1.4, 1, 1))
     

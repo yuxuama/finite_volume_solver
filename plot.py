@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+from test import predict_plume
 from utils import extract_parameter, get_temp_from_pressure, get_potential_temp, get_modified_potential_temp, compute_omega
 
 p_gamma = 0 # Pour le tuple des paramètres
@@ -18,8 +19,6 @@ p_BC = 11
 p_T_io = 12
 p_name = 13
 p_out = 14
-
-DATA = h5py.File('./out/layer/save_00', 'r')['speed x'][:]
 
 def selecter(filename, quantity, pot_settings):
     """A partir de la quantité que l'on veut afficher renvoie les bonnes données à passer aux
@@ -80,6 +79,27 @@ def selecter(filename, quantity, pot_settings):
         rho = f["rho"][:]
         speed_x = f["speed x"][:]
         data = get_modified_potential_temp(press, rho, speed_x, params, *pot_settings)
+    elif quantity == "logT":
+        quantity = "Temperature"
+        title = "log de la température"
+        ylabel = "Température"
+        press = f["pressure"][:]
+        rho = f["rho"][:]
+        data = np.log(get_temp_from_pressure(press, rho, params))
+    elif quantity == "logTpot":
+        quantity = "Temperature"
+        title = "Log de la température potentielle"
+        ylabel = "Température"
+        press = f["pressure"][:]
+        rho = f["rho"][:]
+        data = np.log(get_potential_temp(press, rho, params))
+    elif quantity == "gradadlogp":
+        quantity = "pressure"
+        title = "Pression"
+        ylabel = "Pression ($Pa$)"
+        data = np.log(f[quantity][:])
+        quantity = "Temperature"
+        data = -(params[p_gamma] - 1) * data / params[p_gamma]
 
     return data, params, f, quantity, title, ylabel
 
@@ -92,7 +112,7 @@ def get_time(filename, params):
     number = int(filename[n-zeros-1::])
     return number * T_io
 
-def plot_slice(filepath, quantity, slice_index, axis, pot_settings, ax=None, **kwargs):
+def plot_slice(filepath, quantity, slice_index, axis, pot_settings=None, ax=None, **kwargs):
     """Affiche une tranche de la densité issue des datas du fichier HDF5 `filepath` selon l'axe `axis` et pour l'indice `slice_index`
     `ax` permet de plot sur une autre figure
     Si la quantité à plot est la température affiche le profil de température
@@ -134,7 +154,7 @@ def plot_slice(filepath, quantity, slice_index, axis, pot_settings, ax=None, **k
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
 
-def plot_hybrid_slice(filepath, a, b , quantity, pot_setting, ax=None, **kwargs):
+def plot_hybrid_slice(filepath, a, b , quantity, pot_setting=None, ax=None, **kwargs):
     """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
     `a` et `b` paramétrisent la droite selon laquelle on veut faire une coupe
     """
@@ -180,7 +200,7 @@ def plot_hybrid_slice(filepath, a, b , quantity, pot_setting, ax=None, **kwargs)
         ax.set_ylabel(ylabel)
         plt.show()
 
-def plot_mean_profile(filepath, quantity, axis, pot_setting, ax=None, **kwargs):
+def plot_mean_profile(filepath, quantity, axis, pot_setting=None, ax=None, **kwargs):
     """Trace le profil de la quantité `quantity` moyenne selon un axe"""
     data, params, f, quantity, title, ylabel = selecter(filepath, quantity, pot_setting)
 
@@ -219,7 +239,7 @@ def plot_mean_profile(filepath, quantity, axis, pot_setting, ax=None, **kwargs):
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
 
-def plot_2d(filepath, quantity, pot_setting, ax=None, **kwargs):
+def plot_2d(filepath, quantity, pot_setting=None, ax=None, **kwargs):
     """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
     # Load file
 
@@ -262,7 +282,7 @@ def plot_energy(filepath, diff=bool):
     ekin_y = f['ekin y'][:]
 
     name = params[p_name]
-    time = None
+    time = params[p_T_end]
 
     fig, ax = plt.subplots(1, 1)
     fig.suptitle("{0} | évolution sur {1} s".format(name, time))
@@ -303,8 +323,35 @@ def plot_omega(filepath, kx, kz):
     plt.title("Profil du taux de croissance moyen de l'instabilité")
     plt.show()
 
+def plot_plumes(file, T_up, T_down, rho_grd, gamma, cv, g, ax=None):
+    """Trace le graphique comparant le modèle de hauteur de plume avec les simulations"""
+    plot = False
+    if ax is None:
+        plot = True
+        ax = plt.subplot(1, 1, 1)
+    Lth, Tpot_th = predict_plume(T_up, T_down, rho_grd, gamma, cv, g)
+    print("Température potentielle stationnaire prédite:", Tpot_th)
+    ax.hlines(Lth, 0, 1, 'r', linestyles='dashed', label="Hauteur donné par le modèle")
+    plot_mean_profile(file, 'logTpot', 1, ax=ax, label="$\log\\theta$")
+    plot_mean_profile(file, 'logT', 1, ax=ax, label="$\log T$")
+    plot_mean_profile(file, 'gradadlogp', 1, ax=ax, label="$- \\nabla_{ad} \log p$")
+    
+    if plot:
+        ax.set(ylabel="$y$", title="Test du modèle pour $T_{grd} = "+ str(T_down) + "$")
+        ax.scatter(np.log(T_down), 0, s=10, c='r', label="thermostat")
+        ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
+        plt.tight_layout()
+        plt.show()
+
 if __name__ == "__main__":
-    file = './out/convection_diffusion/'
-    plot_energy(file+'energies.h5', diff=False)
+    file = './out/convection_limited/'
+    plot_energy(file+'energies.h5', diff=True)
     #plot_omega(file + 'save_10', 1, 0.25)
-    #plot_mean_profile(file + "save_15", 'v', 1, pot_setting=None)
+    #plot_mean_profile(file + "save_400", 'T', 1, pot_setting=None)
+    ax = plt.subplot(1, 1, 1)
+    plot_plumes(file + "save_400", 1, 1.6, 1, 1.4, 1, 1, ax)
+    ax.hlines(0.4, 0, 1, 'r', linestyles='dashdot', label="Début du shear")
+    ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
+    plt.tight_layout()
+    plt.show()
+    

@@ -67,7 +67,7 @@ def animate_quantity(dirpath, quantity, frames=None, rest_time=200, **kwargs):
     ax.set_aspect('equal', adjustable='box')
 
     def animate(frame): 
-        data = h5py.File(files[frame+1], 'r')[quantity][:]
+        data = h5py.File(files[frame+2], 'r')[quantity][:]
         mesh.set_array(data.flatten())
         mesh.set_norm(Normalize(vmin=np.min(data), vmax=np.max(data)))
         if frame == frames-2:
@@ -161,7 +161,6 @@ def animate_profile_potential_temperature(dirpath, xlim=None,frames=None, rest_t
     if xlim is not None:
         ax.set_xlim(xlim)
 
-
     def animate(frame):
         f = h5py.File(files[frame+2], 'r')
         press = f['pressure'][:]
@@ -177,8 +176,9 @@ def animate_profile_potential_temperature(dirpath, xlim=None,frames=None, rest_t
     return ani
 
 if __name__ == '__main__':
-    dir = './out/test/'
-    ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
-    #ani = animate_quantity(dir, 'p', cmap='coolwarm', shading='auto')
-    #ani = animate_profile_potential_temperature(dir)
+    dir = './out/convection_limited/'
+    #ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
+    #ani.save("plume devient shear temp.mp4")
+    #ani = animate_quantity(dir, 'v', rest_time=100, cmap='coolwarm', shading='auto')
+    ani = animate_profile_potential_temperature(dir)
     plt.show()
