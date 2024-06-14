@@ -140,9 +140,9 @@ def plot_slice(filepath, quantity, slice_index, axis, pot_settings=None, ax=None
         plot = True
 
     if quantity == "Temperature":
-        ax.plot(data, space, **kwargs)
+        line = ax.plot(data, space, **kwargs)
     else:
-        ax.plot(space, data, **kwargs)
+        line = ax.plot(space, data, **kwargs)
 
     if plot:
         if quantity == "Temperature":
@@ -153,6 +153,9 @@ def plot_slice(filepath, quantity, slice_index, axis, pot_settings=None, ax=None
             ax.set_xlabel(f'${axis}$')
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
+    else:
+        return line
+
 
 def plot_hybrid_slice(filepath, a, b , quantity, pot_setting=None, ax=None, **kwargs):
     """Permet de faire les coupes même si ce n'est pas aligné avec l'un des axes
@@ -193,12 +196,14 @@ def plot_hybrid_slice(filepath, a, b , quantity, pot_setting=None, ax=None, **kw
     x_line = x_line[pre_mask]
 
     data = data[x_line, y_line]
-    ax.plot(np.sqrt(x**2 + y**2), data, **kwargs)
+    line = ax.plot(np.sqrt(x**2 + y**2), data, **kwargs)
 
     if plot:
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         ax.set_ylabel(ylabel)
         plt.show()
+    else:
+        return line
 
 def plot_mean_profile(filepath, quantity, axis, pot_setting=None, ax=None, **kwargs):
     """Trace le profil de la quantité `quantity` moyenne selon un axe"""
@@ -225,9 +230,9 @@ def plot_mean_profile(filepath, quantity, axis, pot_setting=None, ax=None, **kwa
         plot = True
 
     if quantity == "Temperature":
-        ax.plot(data, space, **kwargs)
+        line = ax.plot(data, space, **kwargs)
     else:
-        ax.plot(space, data, **kwargs)
+        line = ax.plot(space, data, **kwargs)
 
     if plot:
         if quantity == "Temperature":
@@ -238,6 +243,8 @@ def plot_mean_profile(filepath, quantity, axis, pot_setting=None, ax=None, **kwa
             ax.set_xlabel(f'${axis}$')
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         plt.show()
+    else: 
+        return line
 
 def plot_2d(filepath, quantity, pot_setting=None, ax=None, **kwargs):
     """Plot la densite stockée dans le fichier `filepath` (format HDF5)"""
@@ -262,13 +269,61 @@ def plot_2d(filepath, quantity, pot_setting=None, ax=None, **kwargs):
         plot = True
 
     ax.set_aspect('equal', adjustable='box')
-    ax.pcolormesh(xm, ym, data, **kwargs)
+    pcmap = ax.pcolormesh(xm, ym, data, **kwargs)
 
     if plot:
         ax.set_title("{0} ({1}) @ t = {2} s".format(name, title, time))
         ax.set_xlabel('$x$')
         ax.set_ylabel('$y$')        
         plt.show()
+    else:
+        return pcmap
+
+def plot_speed_field(filepath, skip, y_max=None, normalized=False, ax=None, **kwargs):
+
+    # Load file
+    f = h5py.File(filepath, 'r')
+    params = extract_parameter(f['metadata'])
+
+    nx = params[p_nx]
+    ny = params[p_ny]
+    
+    # Abscisses
+    x = f['x'][0:nx:skip]
+    y = f['y'][0:ny:skip]
+
+    xm, ym = np.meshgrid(x, y)
+
+    u = f['speed x'][0:nx:skip, 0:ny:skip]
+    v = f['speed y'][0:nx:skip, 0:ny:skip]
+
+    if normalized:
+        norm = u**2 + v**2
+        u = u / np.sqrt(norm)
+        v = v / np.sqrt(norm)
+    
+    if y_max is not None:
+        mask = ym < y_max
+        u = u[mask]
+        v = v[mask]
+        xm = xm[mask]
+        ym = ym[mask]
+    # plot
+    plot = False
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        plot = True
+    
+    ax.set_aspect('equal', adjustable='box')
+    quiver = ax.quiver(xm, ym, u, v, **kwargs)
+
+    if plot:
+        ax.set_xlabel('$x$')
+        ax.set_ylabel('$y$')        
+        plt.show()
+    else:
+        return quiver
 
 def plot_energy(filepath, diff=bool):
     """Trace les diagrammes d'énergie
@@ -285,7 +340,7 @@ def plot_energy(filepath, diff=bool):
     time = params[p_T_end]
 
     fig, ax = plt.subplots(1, 1)
-    fig.suptitle("{0} | évolution sur {1} s".format(name, time))
+    fig.suptitle("{0} | évolution sur {1}".format(name, time))
     
     if diff:
         ekin_x = np.abs(ekin_x - ekin_x[0])
@@ -293,7 +348,7 @@ def plot_energy(filepath, diff=bool):
 
     ax.semilogy(time_axis, ekin_x, '--b', label="selon x")
     ax.semilogy(time_axis, ekin_y, 'b', label="selon y")
-    ax.set(title="Evolution de l'énergie cinétique", xlabel="$t$ (s)", ylabel="Energie (J)")
+    ax.set(title="Evolution de l'énergie cinétique au cours du temps", xlabel="$t$", ylabel="Énergie")
     ax.legend()
     plt.show()
 
@@ -331,27 +386,23 @@ def plot_plumes(file, T_up, T_down, rho_grd, gamma, cv, g, ax=None):
         ax = plt.subplot(1, 1, 1)
     Lth, Tpot_th = predict_plume(T_up, T_down, rho_grd, gamma, cv, g)
     print("Température potentielle stationnaire prédite:", Tpot_th)
-    ax.hlines(Lth, 0, 1, 'r', linestyles='dashed', label="Hauteur donné par le modèle")
     plot_mean_profile(file, 'logTpot', 1, ax=ax, label="$\log\\theta$")
     plot_mean_profile(file, 'logT', 1, ax=ax, label="$\log T$")
     plot_mean_profile(file, 'gradadlogp', 1, ax=ax, label="$- \\nabla_{ad} \log p$")
+    ax.hlines(Lth, 0, 1, 'black', linestyles='dashed', label="$h$")
     
     if plot:
+        ax.legend()
         ax.set(ylabel="$y$", title="Test du modèle pour $T_{grd} = "+ str(T_down) + "$")
-        ax.scatter(np.log(T_down), 0, s=10, c='r', label="thermostat")
-        ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
-        plt.tight_layout()
+        ax.scatter(np.log(T_down), 0, s=10, c='r')
+        #ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
+        #plt.tight_layout()
         plt.show()
 
 if __name__ == "__main__":
-    file = './out/convection_limited/'
-    plot_energy(file+'energies.h5', diff=True)
-    #plot_omega(file + 'save_10', 1, 0.25)
-    #plot_mean_profile(file + "save_400", 'T', 1, pot_setting=None)
-    ax = plt.subplot(1, 1, 1)
-    plot_plumes(file + "save_400", 1, 1.6, 1, 1.4, 1, 1, ax)
-    ax.hlines(0.4, 0, 1, 'r', linestyles='dashdot', label="Début du shear")
-    ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
-    plt.tight_layout()
-    plt.show()
-    
+    file = './out/convection_confined_low_rapport/'
+    plot_2d(file + 'save_050', "u", cmap="plasma")
+    #plot_energy(file+'energies.h5', diff=True)
+    #plot_omega(file + 'save_080', 2, 1)
+    #plot_plumes(file + "save_100", 1, 1.6, 1, 1.4, 1, 1)
+    #plot_speed_field(file + "save_500", 5, headlength=3)

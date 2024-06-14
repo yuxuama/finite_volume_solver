@@ -11,8 +11,8 @@ ny: 75
 Lx: 1
 Ly: 1
 CFL: 0.9    
-T end: 20
-T io: 0.25
+T end: 100
+T io: 1
 
 # --- Condition aux limites
 BC: reflex
@@ -21,7 +21,7 @@ BC: reflex
 # Préciser le nom de la fonction de `in_maker_file.py` et ses arguments
 function: layer
 gradT: -28
-T_grd: 60
+T_grd: 30
 rho_grd: 1
 center: 1
 thickness: 0.5
@@ -32,4 +32,4 @@ ky: 1
 
 # --- Paramètres d'enregistrement
 name: Test shear
-output dir: layer
+output dir: convection_confined_low_rapport

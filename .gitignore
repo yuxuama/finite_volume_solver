@@ -6,3 +6,4 @@ venv
 .vscode
 anim/*
 token.txt
+report_plot.py

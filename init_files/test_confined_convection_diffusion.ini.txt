@@ -11,7 +11,7 @@ ny: 75
 Lx: 1
 Ly: 1
 CFL: 0.9
-T end: 400
+T end: 300
 T io: 1
 
 # --- Conditions aux limites 
@@ -22,8 +22,8 @@ function: diffusive_layer
 T_up: 1
 T_grd: 1.6
 rho_grd: 1
-center: 1
-thickness: 0.6
+center: 2.1
+thickness: 0
 gradshear: 5
 C: 5e-5
 kx: 4
@@ -31,4 +31,4 @@ ky: 2
 
 # --- Paramètres d'enregistrement
 name: Convection limité par le shear
-output dir: convection_limited
+output dir: convection_confined_model1.6_rapport

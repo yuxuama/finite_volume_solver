@@ -176,9 +176,9 @@ def animate_profile_potential_temperature(dirpath, xlim=None,frames=None, rest_t
     return ani
 
 if __name__ == '__main__':
-    dir = './out/convection_limited/'
-    #ani = animate_temperature(dir, potential=True, cmap='coolwarm', shading='auto')
+    dir = './out/convection_confined_low_rapport/'
+    #ani = animate_temperature(dir, potential=True, rest_time=100, cmap='coolwarm', shading='auto')
     #ani.save("plume devient shear temp.mp4")
-    #ani = animate_quantity(dir, 'v', rest_time=100, cmap='coolwarm', shading='auto')
-    ani = animate_profile_potential_temperature(dir)
+    ani = animate_quantity(dir, 'v', rest_time=100, cmap='plasma', shading='auto')
+    #ani = animate_profile_potential_temperature(dir)
     plt.show()

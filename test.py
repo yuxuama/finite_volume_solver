@@ -90,8 +90,8 @@ if __name__ == '__main__':
     my = conservation(dirpath, 'momentum y', dS)
     print(max(mass), max(mx), max(my))
     """
-    T_down = np.linspace(1.2, 4, 200)
+    #T_down = np.linspace(1.2, 4, 200)
     #plt.plot(T_down, predict_plume(1, T_down, 1, 1.4, 1, 1)[0])
     #plt.show()    
-    print(predict_plume(1, 1.6, 1, 1.4, 1, 1))
+    print(predict_plume(1, 3, 1, 1.4, 1, 1))
     
